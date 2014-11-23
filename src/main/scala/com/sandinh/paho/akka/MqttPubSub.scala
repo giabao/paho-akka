@@ -2,7 +2,7 @@ package com.sandinh.paho.akka
 
 import java.net.{URLDecoder, URLEncoder}
 import akka.actor._
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
 import org.eclipse.paho.client.mqttv3._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
@@ -40,7 +40,7 @@ object MqttPubSub extends StrictLogging {
 
     def receive = {
       case msg: Message =>
-        subscribers foreach(_ ! msg)
+        subscribers foreach (_ ! msg)
 
       case msg @ Subscribe(_, ref, _) =>
         context watch ref
@@ -91,10 +91,10 @@ import MqttPubSub._
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
   * 2. MQTT client will auto-reconnect */
 class MqttPubSub(
-  brokerUrl:    String,
-  userName:     String,
-  password:     String
-) extends FSM[S, Unit] {
+    brokerUrl: String,
+    userName:  String,
+    password:  String
+) extends FSM[S, Unit] with LazyLogging {
   //++++ setup MqttConnectOptions, MqttAsyncClient & ConnListener ++++
   private[this] val conOpt = {
     val opt = new MqttConnectOptions //conOpt.cleanSession == true
@@ -126,7 +126,7 @@ class MqttPubSub(
 
     case Event(Connected, _) =>
       connectCount = 0
-      for((deadline, x) <- pubSubStash if deadline.hasTimeLeft()) self ! x
+      for ((deadline, x) <- pubSubStash if deadline.hasTimeLeft()) self ! x
       pubSubStash.clear()
       goto(SConnected)
 
