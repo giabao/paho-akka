@@ -7,7 +7,7 @@ crossScalaVersions := Seq("2.11.4", "2.10.4")
 
 scalacOptions ++= Seq(
   "-encoding", "UTF-8", "-deprecation", "-feature",
-  "-Xmigration", "-Xfuture", //"–Xverify", "-Xcheck-null",
+  "-Xfuture", //"–Xverify", "-Xcheck-null",
   "-Ywarn-dead-code", "-Ydead-code", "-Yinline-warnings" //"-Yinline", "-Ystatistics",
 )
 

@@ -6,11 +6,10 @@ import akka.testkit._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Second, Span}
 import scala.concurrent.duration._
-import com.sandinh.paho.akka.MqttPubSub.{SubscribeAck, Subscribe, SConnected, SDisconnected}
 import org.scalatest.WordSpecLike
 import org.scalatest.Matchers
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.Future
+import scala.concurrent.{Promise, Future}
 import MqttPubSub._
 
 class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
@@ -21,13 +20,22 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  lazy val pubsub = TestFSMRef(new MqttPubSub("tcp://test.mosquitto.org:1883", null, null))
+  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mosquitto.org:1883")))
+
+  def poll(f: => Boolean): Future[Boolean] = {
+    val p = Promise[Boolean]()
+    val task = system.scheduler.schedule(1.second, 1.second, new Runnable {
+      def run() = if (f) p success true
+    })
+    p.future.andThen { case _ => task.cancel() }
+  }
 
   "MqttPubSub" must {
     "start, subscribe, publish & receive messages" in {
       pubsub.stateName shouldBe SDisconnected
 
-      akka.pattern.after(2.seconds, system.scheduler)(Future(pubsub.stateName)).futureValue shouldBe SConnected
+      def checkState = pubsub.stateName == SConnected
+      poll(checkState).futureValue shouldBe true
 
       val topic = "com.sandinh.paho.akka/MqttPubSubSpec"
       val subscribe = Subscribe(topic, self, 2)

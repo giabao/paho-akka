@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import akka.actor.{ActorRef, Props, Actor, ActorSystem}
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
-import com.sandinh.paho.akka.MqttPubSub.{Message, SubscribeAck, Subscribe, Publish}
+import MqttPubSub._
 import com.sandinh.paho.akka.SubsActor.Report
 import org.apache.logging.log4j.{Level, LogManager}
 import org.apache.logging.log4j.core.LoggerContext
@@ -63,7 +63,9 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
 private case object Run
 
 private trait Common { this: Actor =>
-  val pubsub = context.actorOf(MqttPubSub.props("tcp://test.mosquitto.org:1883"))
+  val pubsub = context.actorOf(Props(
+    classOf[MqttPubSub], PSConfig("tcp://test.mosquitto.org:1883", stashCapacity = 10000)
+  ))
   val topic = "com.sandinh.paho.akka/BenchSpec"
 }
 

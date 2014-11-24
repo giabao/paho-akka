@@ -84,8 +84,34 @@ object MqttPubSub extends StrictLogging {
   @inline private def urlEnc(s: String) = URLEncoder.encode(s, "utf-8")
   @inline private def urlDec(s: String) = URLDecoder.decode(s, "utf-8")
 
-  def props(brokerUrl: String, userName: String = null, password: String = null) =
-    Props(classOf[MqttPubSub], brokerUrl, userName, password)
+  /** @param brokerUrl ex tcp://test.mosquitto.org:1883
+    * @param userName nullable
+    * @param password nullable
+    * @param stashTimeToLive messages received when disconnected will be stash.
+    *                     Messages isOverdue after stashTimeToLive will be discard. See also `stashCapacity`
+    * @param stashCapacity pubSubStash will be drop first haft elems when reach this size
+    * @param reconnectDelayMin when received Disconnected event, we will first delay reconnectDelayMin to try Connect
+    *                       if connect success => we reinit connectCount
+    *                       else => ConnListener.onFailure will send Disconnected to this FSM =>
+    *                       we re-schedule Connect with {{{delay = reconnectDelayMin * 2^connectCount}}}
+    * @param reconnectDelayMax max delay to retry connecting */
+  case class PSConfig(
+      brokerUrl:         String,
+      userName:          String         = null,
+      password:          String         = null,
+      stashTimeToLive:   FiniteDuration = 1.minute,
+      stashCapacity:     Int            = 8000,
+      reconnectDelayMin: FiniteDuration = 10.millis,
+      reconnectDelayMax: FiniteDuration = 30.seconds
+  ) {
+
+    //pre-calculate the max of connectCount that: reconnectDelayMin * 2^connectCountMax ~ reconnectDelayMax
+    val connectCountMax = Math.floor(Math.log(reconnectDelayMax / reconnectDelayMin) / Math.log(2)).toInt
+
+    def connectDelay(connectCount: Int) =
+      if (connectCount >= connectCountMax) reconnectDelayMax
+      else reconnectDelayMin * (1L << connectCount)
+  }
 }
 
 import MqttPubSub._
@@ -93,33 +119,29 @@ import MqttPubSub._
 /** Notes:
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
   * 2. MQTT client will auto-reconnect */
-class MqttPubSub(
-    brokerUrl: String,
-    userName:  String,
-    password:  String
-) extends FSM[S, Unit] with LazyLogging {
+class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with LazyLogging {
   //setup MqttConnectOptions
   private[this] val conOpt = {
     val opt = new MqttConnectOptions //conOpt.cleanSession == true
-    if (userName != null) opt.setUserName(userName)
-    if (password != null) opt.setPassword(password.toCharArray)
+    if (cfg.userName != null) opt.setUserName(cfg.userName)
+    if (cfg.password != null) opt.setPassword(cfg.password.toCharArray)
     opt
   }
-  //setup MqttAsyncClient
+  //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
-    val c = new MqttAsyncClient(this.brokerUrl, MqttAsyncClient.generateClientId(), null)
+    val c = new MqttAsyncClient(cfg.brokerUrl, MqttAsyncClient.generateClientId(), null)
     c.setCallback(new PubSubMqttCallback(self))
     c
   }
   //setup Connnection IMqttActionListener
   private[this] val conListener = new ConnListener(self)
 
-  private[this] val stashTimeToLive = 1.minute
   //use to stash the pub-sub messages when disconnected
   //note that we do NOT store the sender() in to the stash as in akka.actor.StashSupport#theStash
   private[this] val pubSubStash = ListBuffer.empty[(Deadline, Any)]
-  //pubSubStash will be drop first haft elems when reach this size
-  private[this] val StashCapacity = 5000
+
+  //reconnect attempt count, reset when connect success
+  private[this] var connectCount = 0
 
   //++++ FSM logic ++++
   startWith(SDisconnected, Unit)
@@ -138,10 +160,10 @@ class MqttPubSub(
       goto(SConnected)
 
     case Event(x @ (_: Publish | _: Subscribe), _) =>
-      if(pubSubStash.length > StashCapacity) {
-        pubSubStash.remove(0, StashCapacity / 2)
+      if (pubSubStash.length > cfg.stashCapacity) {
+        pubSubStash.remove(0, cfg.stashCapacity / 2)
       }
-      pubSubStash += Tuple2(Deadline.now + stashTimeToLive, x)
+      pubSubStash += Tuple2(Deadline.now + cfg.stashTimeToLive, x)
       stay()
   }
 
@@ -175,25 +197,11 @@ class MqttPubSub(
       stay()
 
     case Event(Disconnected, _) =>
-      val delay = if (connectCount >= connectCountMax) reconnectDelayMax
-      else reconnectDelayMin * (1L << connectCount)
+      val delay = cfg.connectDelay(connectCount)
       logger.debug(s"delay $delay before reconnect")
       setTimer("reconnect", Connect, delay)
       stay()
   }
 
   self ! Connect
-
-  //++++ Reconnection logic related fields ++++
-  //when received Disconnected event, we will first delay reconnectDelayMin to try Connect
-  //if connect success => we reinit connectCount
-  //else => ConnListener.onFailure will send Disconnected to this FSM
-  //=> we re-schedule Connect with delay = reconnectDelayMin * 2^connectCount
-  private[this] val reconnectDelayMin = 10.millis
-  //max delay to retry connecting
-  private[this] val reconnectDelayMax = 30.seconds
-  //pre-calculate the max of connectCount that: reconnectDelayMin * 2^connectCountMax ~ reconnectDelayMax
-  private[this] val connectCountMax = Math.floor(Math.log(reconnectDelayMax / reconnectDelayMin) / Math.log(2)).toInt
-  //reconnect attempt count, reset when connect success
-  private[this] var connectCount = 0L
 }
