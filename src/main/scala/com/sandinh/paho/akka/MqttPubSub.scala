@@ -95,22 +95,24 @@ class MqttPubSub(
     userName:  String,
     password:  String
 ) extends FSM[S, Unit] with LazyLogging {
-  //++++ setup MqttConnectOptions, MqttAsyncClient & ConnListener ++++
+  //setup MqttConnectOptions
   private[this] val conOpt = {
     val opt = new MqttConnectOptions //conOpt.cleanSession == true
     if (userName != null) opt.setUserName(userName)
     if (password != null) opt.setPassword(password.toCharArray)
     opt
   }
+  //setup MqttAsyncClient
   private[this] val client = {
     val c = new MqttAsyncClient(this.brokerUrl, MqttAsyncClient.generateClientId(), null)
     c.setCallback(new PubSubMqttCallback(self))
     c
   }
+  //setup Connnection IMqttActionListener
   private[this] val conListener = new ConnListener(self)
 
   private[this] val stashTimeToLive = 1.minute
-  //use to stash the pub-sub message when disconnected
+  //use to stash the pub-sub messages when disconnected
   //note that we do NOT store the sender() in to the stash as in akka.actor.StashSupport#theStash
   private[this] val pubSubStash = ListBuffer.empty[(Deadline, Any)]
 

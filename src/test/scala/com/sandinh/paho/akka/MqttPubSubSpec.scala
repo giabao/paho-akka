@@ -62,7 +62,3 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(20, Seconds), Span(1, Second))
 }
-
-private class SubscribeActor extends Actor {
-  override def receive: Receive = ???
-}

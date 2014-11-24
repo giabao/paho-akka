@@ -22,7 +22,9 @@ libraryDependencies ++= {
     "org.eclipse.paho"            % "org.eclipse.paho.client.mqttv3"  % paho,
     "com.typesafe.akka"           %% "akka-actor"                     % ak,
     "com.typesafe.scala-logging"  %% "scala-logging"                  % slog,
-    "com.typesafe.akka"           %% "akka-testkit"                   % ak        % "test",
-    "org.scalatest"               %% "scalatest"                      % stest % "test"
+    "com.typesafe.akka"           %% "akka-testkit"                   % ak      % "test",
+    "org.scalatest"               %% "scalatest"                      % stest   % "test"
+  ) ++ Seq("log4j-slf4j-impl", "log4j-core", "log4j-api").map(
+    "org.apache.logging.log4j"    % _                % "2.1"   % "test"
   )
 }
