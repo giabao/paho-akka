@@ -1,9 +1,7 @@
 package com.sandinh.paho.akka
 
 import java.net.URLEncoder
-
-import akka.actor.Actor.Receive
-import akka.actor.{PoisonPill, Actor, ActorSystem}
+import akka.actor.{PoisonPill, ActorSystem}
 import akka.testkit._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Seconds, Second, Span}
@@ -19,7 +17,7 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
     with BeforeAndAfterAll with ScalaFutures {
   import system.dispatcher
 
-  def this() = this(ActorSystem("MySpec"))
+  def this() = this(ActorSystem("MqttPubSubSpec"))
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
@@ -29,7 +27,7 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
     "start, subscribe, publish & receive messages" in {
       pubsub.stateName shouldBe SDisconnected
 
-      akka.pattern.after(5.seconds, system.scheduler)(Future(pubsub.stateName)).futureValue shouldBe SConnected
+      akka.pattern.after(2.seconds, system.scheduler)(Future(pubsub.stateName)).futureValue shouldBe SConnected
 
       val topic = "com.sandinh.paho.akka/MqttPubSubSpec"
       val subscribe = Subscribe(topic, self, 2)
