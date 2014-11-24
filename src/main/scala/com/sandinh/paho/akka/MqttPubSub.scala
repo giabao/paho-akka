@@ -118,6 +118,8 @@ class MqttPubSub(
   //use to stash the pub-sub messages when disconnected
   //note that we do NOT store the sender() in to the stash as in akka.actor.StashSupport#theStash
   private[this] val pubSubStash = ListBuffer.empty[(Deadline, Any)]
+  //pubSubStash will be drop first haft elems when reach this size
+  private[this] val StashCapacity = 5000
 
   //++++ FSM logic ++++
   startWith(SDisconnected, Unit)
@@ -136,6 +138,9 @@ class MqttPubSub(
       goto(SConnected)
 
     case Event(x @ (_: Publish | _: Subscribe), _) =>
+      if(pubSubStash.length > StashCapacity) {
+        pubSubStash.remove(0, StashCapacity / 2)
+      }
       pubSubStash += Tuple2(Deadline.now + stashTimeToLive, x)
       stay()
   }
