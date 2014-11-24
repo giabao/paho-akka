@@ -63,7 +63,7 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
 private case object Run
 
 private trait Common { this: Actor =>
-  val pubsub = context.actorOf(Props(classOf[MqttPubSub], "tcp://test.mosquitto.org:1883", null, null))
+  val pubsub = context.actorOf(MqttPubSub.props("tcp://test.mosquitto.org:1883"))
   val topic = "com.sandinh.paho.akka/BenchSpec"
 }
 

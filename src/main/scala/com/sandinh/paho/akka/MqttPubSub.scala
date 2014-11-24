@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 
 object MqttPubSub extends StrictLogging {
   //++++ public message classes ++++//
-  class Publish(val topic: String, payload: Array[Byte], qos: Int) {
+  class Publish(val topic: String, payload: Array[Byte], qos: Int = 0) {
     def message() = {
       val msg = new MqttMessage(payload)
       msg.setQos(qos)
@@ -18,7 +18,7 @@ object MqttPubSub extends StrictLogging {
   }
 
   /** TODO support wildcards subscription */
-  case class Subscribe(topic: String, ref: ActorRef, qos: Int)
+  case class Subscribe(topic: String, ref: ActorRef, qos: Int = 0)
 
   case class SubscribeAck(subscribe: Subscribe)
 
@@ -83,6 +83,9 @@ object MqttPubSub extends StrictLogging {
   //ultilities
   @inline private def urlEnc(s: String) = URLEncoder.encode(s, "utf-8")
   @inline private def urlDec(s: String) = URLDecoder.decode(s, "utf-8")
+
+  def props(brokerUrl: String, userName: String = null, password: String = null) =
+    Props(classOf[MqttPubSub], brokerUrl, userName, password)
 }
 
 import MqttPubSub._
