@@ -2,7 +2,7 @@ package com.sandinh.paho.akka
 
 import java.net.{URLDecoder, URLEncoder}
 import akka.actor._
-import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
+import com.typesafe.scalalogging.StrictLogging
 import org.eclipse.paho.client.mqttv3._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
@@ -70,7 +70,7 @@ object MqttPubSub extends StrictLogging {
 
   private class ConnListener(owner: ActorRef) extends IMqttActionListener {
     def onSuccess(asyncActionToken: IMqttToken): Unit = {
-      logger.debug("connected")
+      logger.info("connected")
       owner ! Connected
     }
 
@@ -88,12 +88,12 @@ object MqttPubSub extends StrictLogging {
     * @param userName nullable
     * @param password nullable
     * @param stashTimeToLive messages received when disconnected will be stash.
-    *                     Messages isOverdue after stashTimeToLive will be discard. See also `stashCapacity`
+    * Messages isOverdue after stashTimeToLive will be discard. See also `stashCapacity`
     * @param stashCapacity pubSubStash will be drop first haft elems when reach this size
-    * @param reconnectDelayMin when received Disconnected event, we will first delay reconnectDelayMin to try Connect
-    *                       if connect success => we reinit connectCount
-    *                       else => ConnListener.onFailure will send Disconnected to this FSM =>
-    *                       we re-schedule Connect with {{{delay = reconnectDelayMin * 2^connectCount}}}
+    * @param reconnectDelayMin when received Disconnected event, we will first delay reconnectDelayMin to try Connect.
+    * + if connect success => we reinit connectCount
+    * + else => ConnListener.onFailure will send Disconnected to this FSM =>
+    * we re-schedule Connect with {{{delay = reconnectDelayMin * 2^connectCount}}}
     * @param reconnectDelayMax max delay to retry connecting */
   case class PSConfig(
       brokerUrl:         String,
@@ -119,7 +119,7 @@ import MqttPubSub._
 /** Notes:
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
   * 2. MQTT client will auto-reconnect */
-class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with LazyLogging {
+class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
   //setup MqttConnectOptions
   private[this] val conOpt = {
     val opt = new MqttConnectOptions //conOpt.cleanSession == true
@@ -148,6 +148,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with LazyLogging {
 
   when(SDisconnected) {
     case Event(Connect, _) =>
+      logger.info(s"connecting to ${cfg.brokerUrl}..")
       //only receive Connect when client.isConnected == false so its safe here to call client.connect
       client.connect(conOpt, null, conListener)
       connectCount += 1
@@ -198,10 +199,12 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with LazyLogging {
 
     case Event(Disconnected, _) =>
       val delay = cfg.connectDelay(connectCount)
-      logger.debug(s"delay $delay before reconnect")
+      logger.info(s"delay $delay before reconnect")
       setTimer("reconnect", Connect, delay)
       stay()
   }
+
+  initialize()
 
   self ! Connect
 }
