@@ -2,9 +2,9 @@ organization := "com.sandinh"
 
 name := "paho-akka"
 
-version := "1.0.1"
+version := "1.0.2"
 
-scalaVersion := "2.11.4"
+scalaVersion := "2.11.5"
 
 scalacOptions ++= Seq(
   "-encoding", "UTF-8", "-deprecation", "-feature", "-Xfuture", //"–Xverify", "-Xcheck-null",
@@ -20,7 +20,7 @@ libraryDependencies ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalatest"     %% "scalatest"    % "2.2.2",
+  "org.scalatest"     %% "scalatest"    % "2.2.3",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.8"
 ) ++ Seq("core", "api", "slf4j-impl").map(s =>
   "org.apache.logging.log4j" % s"log4j-$s" % "2.1"

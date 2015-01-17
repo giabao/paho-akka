@@ -43,6 +43,9 @@ class SubscribeActor extends Actor {
 ## Changelogs
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.0.2
+only update scala 2.11.5
+
 ##### v1.0.1
 + update akka 2.3.8
 + add ByteArrayConverters util
