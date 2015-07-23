@@ -1,12 +1,4 @@
-xerial.sbt.Sonatype.sonatypeSettings
-
-publishMavenStyle := true
-
-publishArtifact in Test := false
-
-pomIncludeRepository := { _ => false }
-
-pomExtra := <url>https://github.com/giabao/paho-akka</url>
+pomExtra in Global := <url>https://github.com/giabao/paho-akka</url>
   <licenses>
     <license>
       <name>Apache 2</name>
