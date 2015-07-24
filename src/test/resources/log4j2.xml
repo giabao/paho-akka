@@ -6,7 +6,7 @@
         </Console>
     </Appenders>
     <Loggers>
-        <Logger name="com.sandinh.paho.akka" level="TRACE"/>
+        <Logger name="com.sandinh.paho.akka" level="INFO"/>
         <Root level="error">
             <AppenderRef ref="Console"/>
         </Root>
