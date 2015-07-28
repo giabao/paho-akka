@@ -80,6 +80,17 @@ object MqttPubSub extends StrictLogging {
     }
   }
 
+  private class SubscribeListener(owner: ActorRef) extends IMqttActionListener {
+    def onSuccess(asyncActionToken: IMqttToken): Unit = {
+      asyncActionToken.getTopics.foreach(topic => logger.info(s"subscribe $topic success."))
+    }
+
+    def onFailure(asyncActionToken: IMqttToken, exception: Throwable): Unit = {
+      val topicList = asyncActionToken.getTopics.mkString(",")
+      logger.error(s"subscribe to $topicList failed", exception)
+    }
+  }
+
   //ultilities
   @inline private def urlEnc(s: String) = URLEncoder.encode(s, "utf-8")
   @inline private def urlDec(s: String) = URLDecoder.decode(s, "utf-8")
@@ -87,6 +98,7 @@ object MqttPubSub extends StrictLogging {
   /** @param brokerUrl ex tcp://test.mosquitto.org:1883
     * @param userName nullable
     * @param password nullable
+    * @param cleanSession Sets whether the client and server should remember state across restarts and reconnects.
     * @param stashTimeToLive messages received when disconnected will be stash.
     * Messages isOverdue after stashTimeToLive will be discard. See also `stashCapacity`
     * @param stashCapacity pubSubStash will be drop first haft elems when reach this size
@@ -99,6 +111,7 @@ object MqttPubSub extends StrictLogging {
       brokerUrl:         String,
       userName:          String         = null,
       password:          String         = null,
+      cleanSession:      Boolean        = false,
       stashTimeToLive:   FiniteDuration = 1.minute,
       stashCapacity:     Int            = 8000,
       reconnectDelayMin: FiniteDuration = 10.millis,
@@ -125,6 +138,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
     val opt = new MqttConnectOptions //conOpt.cleanSession == true
     if (cfg.userName != null) opt.setUserName(cfg.userName)
     if (cfg.password != null) opt.setPassword(cfg.password.toCharArray)
+    opt.setCleanSession(cfg.cleanSession)
     opt
   }
   //setup MqttAsyncClient without MqttClientPersistence
@@ -135,6 +149,9 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
   }
   //setup Connnection IMqttActionListener
   private[this] val conListener = new ConnListener(self)
+
+  //setup Connnection IMqttActionListener
+  private[this] val subListener = new SubscribeListener(self)
 
   //use to stash the pub-sub messages when disconnected
   //note that we do NOT store the sender() in to the stash as in akka.actor.StashSupport#theStash
@@ -183,7 +200,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
           context watch t
           //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
           //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
-          client.subscribe(topic, qos)
+          client.subscribe(topic, qos, null, subListener)
       }
       stay()
   }
@@ -202,6 +219,11 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
       logger.info(s"delay $delay before reconnect")
       setTimer("reconnect", Connect, delay)
       stay()
+  }
+
+  override def postStop(): Unit = {
+    client.disconnectForcibly()
+    super.postStop()
   }
 
   initialize()
