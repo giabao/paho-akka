@@ -4,6 +4,7 @@ import java.net.{URLDecoder, URLEncoder}
 import akka.actor._
 import com.typesafe.scalalogging.StrictLogging
 import org.eclipse.paho.client.mqttv3._
+import MqttConnectOptions.CLEAN_SESSION_DEFAULT
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 
@@ -94,7 +95,8 @@ object MqttPubSub extends StrictLogging {
     * + if connect success => we reinit connectCount
     * + else => ConnListener.onFailure will send Disconnected to this FSM =>
     * we re-schedule Connect with {{{delay = reconnectDelayMin * 2^connectCount}}}
-    * @param reconnectDelayMax max delay to retry connecting */
+    * @param reconnectDelayMax max delay to retry connecting
+    * @param cleanSession Sets whether the client and server should remember state across restarts and reconnects. */
   case class PSConfig(
       brokerUrl:         String,
       userName:          String         = null,
@@ -102,7 +104,8 @@ object MqttPubSub extends StrictLogging {
       stashTimeToLive:   FiniteDuration = 1.minute,
       stashCapacity:     Int            = 8000,
       reconnectDelayMin: FiniteDuration = 10.millis,
-      reconnectDelayMax: FiniteDuration = 30.seconds
+      reconnectDelayMax: FiniteDuration = 30.seconds,
+      cleanSession:      Boolean        = CLEAN_SESSION_DEFAULT
   ) {
 
     //pre-calculate the max of connectCount that: reconnectDelayMin * 2^connectCountMax ~ reconnectDelayMax
@@ -111,6 +114,15 @@ object MqttPubSub extends StrictLogging {
     def connectDelay(connectCount: Int) =
       if (connectCount >= connectCountMax) reconnectDelayMax
       else reconnectDelayMin * (1L << connectCount)
+
+    /** MqttConnectOptions */
+    lazy val conOpt = {
+      val opt = new MqttConnectOptions
+      if (userName != null) opt.setUserName(userName)
+      if (password != null) opt.setPassword(password.toCharArray)
+      opt.setCleanSession(cleanSession)
+      opt
+    }
   }
 }
 
@@ -120,13 +132,6 @@ import MqttPubSub._
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
   * 2. MQTT client will auto-reconnect */
 class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
-  //setup MqttConnectOptions
-  private[this] val conOpt = {
-    val opt = new MqttConnectOptions //conOpt.cleanSession == true
-    if (cfg.userName != null) opt.setUserName(cfg.userName)
-    if (cfg.password != null) opt.setPassword(cfg.password.toCharArray)
-    opt
-  }
   //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
     val c = new MqttAsyncClient(cfg.brokerUrl, MqttAsyncClient.generateClientId(), null)
@@ -150,7 +155,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
     case Event(Connect, _) =>
       logger.info(s"connecting to ${cfg.brokerUrl}..")
       //only receive Connect when client.isConnected == false so its safe here to call client.connect
-      client.connect(conOpt, null, conListener)
+      client.connect(cfg.conOpt, null, conListener)
       connectCount += 1
       stay()
 
