@@ -44,8 +44,10 @@ class SubscribeActor extends Actor {
 ## Changelogs
 we use [Semantic Versioning](http://semver.org/)
 
-##### v1.0.3 (not release yet)
-+ update scala 2.11.7, org.eclipse.paho.client.mqttv3 1.0.3, akka-actor 2.3.12
+##### v1.0.3
++ update scala 2.11.7, org.eclipse.paho.client.mqttv3 1.0.2, akka-actor 2.3.12
++ support cleanSession MqttConnectOptions
++ log subscribe actions
 
 ##### v1.0.2
 only update scala 2.11.5
