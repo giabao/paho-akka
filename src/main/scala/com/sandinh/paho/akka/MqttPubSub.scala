@@ -81,6 +81,16 @@ object MqttPubSub extends StrictLogging {
     }
   }
 
+  private object SubscribeListener extends IMqttActionListener {
+    def onSuccess(asyncActionToken: IMqttToken): Unit = {
+      logger.info("subscribed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
+    }
+
+    def onFailure(asyncActionToken: IMqttToken, exception: Throwable): Unit = {
+      logger.error(s"subscribe failed to " + asyncActionToken.getTopics.mkString("[", ",", "]"), exception)
+    }
+  }
+
   //ultilities
   @inline private def urlEnc(s: String) = URLEncoder.encode(s, "utf-8")
   @inline private def urlDec(s: String) = URLDecoder.decode(s, "utf-8")
@@ -188,7 +198,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
           context watch t
           //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
           //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
-          client.subscribe(topic, qos)
+          client.subscribe(topic, qos, null, SubscribeListener)
       }
       stay()
   }
