@@ -2,7 +2,7 @@ organization := "com.sandinh"
 
 name := "paho-akka"
 
-version := "1.0.3-SNAPSHOT"
+version := "1.0.3"
 
 scalaVersion := "2.11.7"
 
