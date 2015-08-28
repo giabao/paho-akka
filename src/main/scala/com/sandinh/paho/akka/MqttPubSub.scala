@@ -185,7 +185,11 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
   when(SConnected) {
     case Event(p: Publish, _) =>
-      client.publish(p.topic, p.message())
+      try {
+        client.publish(p.topic, p.message())
+      } catch {
+        case e: Exception => logger.error(e)(s"can't publish to ${p.topic}")
+      }
       stay()
 
     case Event(msg @ Subscribe(topic, ref, qos), _) =>
