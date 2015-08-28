@@ -2,13 +2,13 @@ package com.sandinh.paho.akka
 
 import java.net.{URLDecoder, URLEncoder}
 import akka.actor._
-import com.typesafe.scalalogging.StrictLogging
 import org.eclipse.paho.client.mqttv3._
 import MqttConnectOptions.CLEAN_SESSION_DEFAULT
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 
-object MqttPubSub extends StrictLogging {
+object MqttPubSub {
+  private val logger = org.log4s.getLogger
   //++++ public message classes ++++//
   class Publish(val topic: String, payload: Array[Byte], qos: Int = 0) {
     def message() = {
@@ -56,7 +56,7 @@ object MqttPubSub extends StrictLogging {
 
   private class PubSubMqttCallback(owner: ActorRef) extends MqttCallback {
     def connectionLost(cause: Throwable): Unit = {
-      logger.error(s"connection lost", cause)
+      logger.error(cause)("connection lost")
       owner ! Disconnected
     }
     /** only logging */
@@ -75,8 +75,8 @@ object MqttPubSub extends StrictLogging {
       owner ! Connected
     }
 
-    def onFailure(asyncActionToken: IMqttToken, exception: Throwable): Unit = {
-      logger.error("connect failed", exception)
+    def onFailure(asyncActionToken: IMqttToken, e: Throwable): Unit = {
+      logger.error(e)("connect failed")
       owner ! Disconnected
     }
   }
@@ -86,8 +86,8 @@ object MqttPubSub extends StrictLogging {
       logger.info("subscribed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
     }
 
-    def onFailure(asyncActionToken: IMqttToken, exception: Throwable): Unit = {
-      logger.error(s"subscribe failed to " + asyncActionToken.getTopics.mkString("[", ",", "]"), exception)
+    def onFailure(asyncActionToken: IMqttToken, e: Throwable): Unit = {
+      logger.error(e)("subscribe failed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
     }
   }
 
@@ -141,7 +141,7 @@ import MqttPubSub._
 /** Notes:
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
   * 2. MQTT client will auto-reconnect */
-class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] with StrictLogging {
+class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
   //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
     val c = new MqttAsyncClient(cfg.brokerUrl, MqttAsyncClient.generateClientId(), null)

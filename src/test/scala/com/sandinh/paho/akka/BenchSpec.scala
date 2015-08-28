@@ -6,8 +6,6 @@ import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
 import MqttPubSub._
 import com.sandinh.paho.akka.SubsActor.Report
-import org.apache.logging.log4j.{Level, LogManager}
-import org.apache.logging.log4j.core.LoggerContext
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
@@ -21,17 +19,8 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  def muteLogging(): Unit = {
-    val ctx = LogManager.getContext(false).asInstanceOf[LoggerContext]
-    val cfg = ctx.getConfiguration.getLoggerConfig("com.sandinh.paho.akka")
-    cfg.setLevel(Level.ERROR)
-    ctx.updateLoggers()
-  }
-
   "MqttPubSub" must {
     "bench ok" in {
-      muteLogging()
-
       val count = 10000
       val qos = 0
 
