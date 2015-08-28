@@ -1,7 +1,7 @@
 organization := "com.sandinh"
 name := "paho-akka"
 
-version := "1.1.0-SNAPSHOT"
+version := "1.1.0"
 
 scalaVersion := "2.11.7"
 crossScalaVersions := Seq(scalaVersion.value, "2.10.5")

@@ -44,6 +44,12 @@ class SubscribeActor extends Actor {
 ## Changelogs
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.1.0
++ cross compile to scala 2.11.7, 2.10.5
++ use log4s instead of scala-logging
++ test with logback instead of log4j2
++ try catch when call underlying mqtt client.publish
+
 ##### v1.0.3
 + update scala 2.11.7, org.eclipse.paho.client.mqttv3 1.0.2, akka-actor 2.3.12
 + support cleanSession MqttConnectOptions
