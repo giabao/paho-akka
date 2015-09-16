@@ -44,6 +44,10 @@ class SubscribeActor extends Actor {
 ## Changelogs
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.1.1
++ fix re-connect issue: When re-connect we should make MqttPubSub FSM goto SDisconnected state
++ add try-catch when calling underlying client's method in MqttPubSub FSM
+
 ##### v1.1.0
 + cross compile to scala 2.11.7, 2.10.5
 + use log4s instead of scala-logging
