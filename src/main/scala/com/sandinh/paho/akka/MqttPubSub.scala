@@ -165,7 +165,11 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
     case Event(Connect, _) =>
       logger.info(s"connecting to ${cfg.brokerUrl}..")
       //only receive Connect when client.isConnected == false so its safe here to call client.connect
-      client.connect(cfg.conOpt, null, conListener)
+      try {
+        client.connect(cfg.conOpt, null, conListener)
+      } catch {
+        case e: Exception => logger.error(e)(s"can't connect to $cfg")
+      }
       connectCount += 1
       stay()
 
@@ -202,7 +206,11 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
           context watch t
           //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
           //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
-          client.subscribe(topic, qos, null, SubscribeListener)
+          try {
+            client.subscribe(topic, qos, null, SubscribeListener)
+          } catch {
+            case e: Exception => logger.error(e)(s"can't subscribe to $topic")
+          }
       }
       stay()
   }
@@ -213,7 +221,11 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       stay()
 
     case Event(Terminated(topicRef), _) =>
-      client.unsubscribe(urlDec(topicRef.path.name))
+      try {
+        client.unsubscribe(urlDec(topicRef.path.name))
+      } catch {
+        case e: Exception => logger.error(e)(s"can't unsubscribe from ${topicRef.path.name}")
+      }
       stay()
 
     case Event(Disconnected, _) =>
