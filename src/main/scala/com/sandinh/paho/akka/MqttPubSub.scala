@@ -220,7 +220,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       val delay = cfg.connectDelay(connectCount)
       logger.info(s"delay $delay before reconnect")
       setTimer("reconnect", Connect, delay)
-      stay()
+      goto(SDisconnected)
   }
 
   initialize()
