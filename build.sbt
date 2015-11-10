@@ -4,7 +4,8 @@ name := "paho-akka"
 version := "1.2.0-SNAPSHOT"
 
 scalaVersion := "2.11.7"
-crossScalaVersions := Seq(scalaVersion.value, "2.10.6")
+//TODO re-enable cross when scala release version 2.12
+//crossScalaVersions := Seq(scalaVersion.value, "2.12.0")
 
 scalacOptions ++= Seq(
   "-encoding", "UTF-8", "-deprecation", "-feature", "-Xfuture", //"–Xverify", "-Xcheck-null",
@@ -15,10 +16,10 @@ resolvers += "Paho Releases" at "https://repo.eclipse.org/content/repositories/p
 
 libraryDependencies ++= Seq(
   "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3"  % "1.0.2",
-  "com.typesafe.akka" %% "akka-actor"                     % "2.3.14",
+  "com.typesafe.akka" %% "akka-actor"                     % "2.4.0",
   "org.log4s"         %% "log4s"                          % "1.2.1",
   "org.scalatest"     %% "scalatest"      % "2.2.5"   % Test,
-  "com.typesafe.akka" %% "akka-testkit"   % "2.3.14"  % Test,
+  "com.typesafe.akka" %% "akka-testkit"   % "2.4.0"   % Test,
   "ch.qos.logback"    % "logback-classic" % "1.1.3"   % Test
 )
 
