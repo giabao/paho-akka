@@ -44,6 +44,9 @@ class SubscribeActor extends Actor {
 ## Changelogs
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.2.0
++ update akka 2.4.0 (drop support java7, scala 2.10.x)
+
 ##### v1.1.2
 + delay (re)connect when client.connect throws Exception 
 + update scala 2.10.5 -> 2.10.6 (keep 2.11.7)

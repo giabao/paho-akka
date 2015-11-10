@@ -106,7 +106,8 @@ object MqttPubSub {
     * + else => ConnListener.onFailure will send Disconnected to this FSM =>
     * we re-schedule Connect with {{{delay = reconnectDelayMin * 2^connectCount}}}
     * @param reconnectDelayMax max delay to retry connecting
-    * @param cleanSession Sets whether the client and server should remember state across restarts and reconnects. */
+    * @param cleanSession Sets whether the client and server should remember state across restarts and reconnects.
+    */
   case class PSConfig(
       brokerUrl:         String,
       userName:          String         = null,
@@ -140,7 +141,8 @@ import MqttPubSub._
 
 /** Notes:
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
-  * 2. MQTT client will auto-reconnect */
+  * 2. MQTT client will auto-reconnect
+  */
 class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
   //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
