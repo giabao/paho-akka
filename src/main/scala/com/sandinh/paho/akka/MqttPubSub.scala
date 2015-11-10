@@ -168,7 +168,9 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       try {
         client.connect(cfg.conOpt, null, conListener)
       } catch {
-        case e: Exception => logger.error(e)(s"can't connect to $cfg")
+        case e: Exception =>
+          logger.error(e)(s"can't connect to $cfg")
+          delayConnect()
       }
       connectCount += 1
       stay()
@@ -229,10 +231,14 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       stay()
 
     case Event(Disconnected, _) =>
-      val delay = cfg.connectDelay(connectCount)
-      logger.info(s"delay $delay before reconnect")
-      setTimer("reconnect", Connect, delay)
+      delayConnect()
       goto(SDisconnected)
+  }
+
+  private def delayConnect(): Unit = {
+    val delay = cfg.connectDelay(connectCount)
+    logger.info(s"delay $delay before reconnect")
+    setTimer("reconnect", Connect, delay)
   }
 
   initialize()
