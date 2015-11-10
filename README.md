@@ -44,6 +44,12 @@ class SubscribeActor extends Actor {
 ## Changelogs
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.1.2
++ delay (re)connect when client.connect throws Exception 
++ update scala 2.10.5 -> 2.10.6 (keep 2.11.7)
++ update akka 2.3.14, log4s 1.2.1
++ update sbt-sonatype 1.0
+
 ##### v1.1.1
 + fix re-connect issue: When re-connect we should make MqttPubSub FSM goto SDisconnected state
 + add try-catch when calling underlying client's method in MqttPubSub FSM
