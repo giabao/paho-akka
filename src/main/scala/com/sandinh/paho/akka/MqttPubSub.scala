@@ -23,6 +23,8 @@ object MqttPubSub {
 
   case class SubscribeAck(subscribe: Subscribe)
 
+  case object MQTTDisconnect
+
   class Message(val topic: String, val payload: Array[Byte])
 
   //++++ FSM stuff ++++//
@@ -234,6 +236,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(Disconnected, _) =>
       delayConnect()
+      context.parent ! MQTTDisconnect
       goto(SDisconnected)
   }
 
