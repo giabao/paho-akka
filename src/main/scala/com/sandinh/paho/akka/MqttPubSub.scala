@@ -23,6 +23,8 @@ object MqttPubSub {
 
   case class SubscribeAck(subscribe: Subscribe)
 
+  case object MQTTDisconnect
+
   class Message(val topic: String, val payload: Array[Byte])
 
   //++++ FSM stuff ++++//
@@ -96,8 +98,6 @@ object MqttPubSub {
   @inline private def urlDec(s: String) = URLDecoder.decode(s, "utf-8")
 
   /** @param brokerUrl ex tcp://test.mosquitto.org:1883
-    * @param userName nullable
-    * @param password nullable
     * @param stashTimeToLive messages received when disconnected will be stash.
     * Messages isOverdue after stashTimeToLive will be discard. See also `stashCapacity`
     * @param stashCapacity pubSubStash will be drop first haft elems when reach this size
@@ -107,16 +107,16 @@ object MqttPubSub {
     * we re-schedule Connect with {{{delay = reconnectDelayMin * 2^connectCount}}}
     * @param reconnectDelayMax max delay to retry connecting
     * @param cleanSession Sets whether the client and server should remember state across restarts and reconnects.
+    * @param connectionOptions Paho client connection options
     */
   case class PSConfig(
       brokerUrl:         String,
-      userName:          String         = null,
-      password:          String         = null,
-      stashTimeToLive:   FiniteDuration = 1.minute,
-      stashCapacity:     Int            = 8000,
-      reconnectDelayMin: FiniteDuration = 10.millis,
-      reconnectDelayMax: FiniteDuration = 30.seconds,
-      cleanSession:      Boolean        = CLEAN_SESSION_DEFAULT
+      stashTimeToLive:   FiniteDuration     = 1.minute,
+      stashCapacity:     Int                = 8000,
+      reconnectDelayMin: FiniteDuration     = 10.millis,
+      reconnectDelayMax: FiniteDuration     = 30.seconds,
+      cleanSession:      Boolean            = CLEAN_SESSION_DEFAULT,
+      connectionOptions: MqttConnectOptions
   ) {
 
     //pre-calculate the max of connectCount that: reconnectDelayMin * 2^connectCountMax ~ reconnectDelayMax
@@ -125,15 +125,6 @@ object MqttPubSub {
     def connectDelay(connectCount: Int) =
       if (connectCount >= connectCountMax) reconnectDelayMax
       else reconnectDelayMin * (1L << connectCount)
-
-    /** MqttConnectOptions */
-    lazy val conOpt = {
-      val opt = new MqttConnectOptions
-      if (userName != null) opt.setUserName(userName)
-      if (password != null) opt.setPassword(password.toCharArray)
-      opt.setCleanSession(cleanSession)
-      opt
-    }
   }
 }
 
@@ -168,7 +159,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       logger.info(s"connecting to ${cfg.brokerUrl}..")
       //only receive Connect when client.isConnected == false so its safe here to call client.connect
       try {
-        client.connect(cfg.conOpt, null, conListener)
+        client.connect(cfg.connectionOptions, null, conListener)
       } catch {
         case e: Exception =>
           logger.error(e)(s"can't connect to $cfg")
@@ -234,6 +225,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(Disconnected, _) =>
       delayConnect()
+      context.parent ! MQTTDisconnect
       goto(SDisconnected)
   }
 
