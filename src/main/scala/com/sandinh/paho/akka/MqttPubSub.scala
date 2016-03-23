@@ -22,6 +22,8 @@ object MqttPubSub {
   case class Subscribe(topic: String, ref: ActorRef, qos: Int = 0)
 
   case class SubscribeAck(subscribe: Subscribe)
+  case object SubscribeSuccess
+  case class SubscribeFailure(e: Throwable)
 
   case object MQTTDisconnect
 
@@ -83,13 +85,15 @@ object MqttPubSub {
     }
   }
 
-  private object SubscribeListener extends IMqttActionListener {
+  private class SubscribeListener(owner: ActorRef) extends IMqttActionListener {
     def onSuccess(asyncActionToken: IMqttToken): Unit = {
       logger.info("subscribed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
+      owner ! SubscribeSuccess
     }
 
     def onFailure(asyncActionToken: IMqttToken, e: Throwable): Unit = {
       logger.error(e)("subscribe failed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
+      owner ! SubscribeFailure(e)
     }
   }
 
@@ -213,7 +217,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
           //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
           //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
           try {
-            client.subscribe(topic, qos, null, SubscribeListener)
+            client.subscribe(topic, qos, null, new SubscribeListener(ref))
           } catch {
             case e: Exception => logger.error(e)(s"can't subscribe to $topic")
           }
