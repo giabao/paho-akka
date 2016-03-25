@@ -54,7 +54,7 @@ private case object Run
 
 private trait Common { this: Actor =>
   val pubsub = context.actorOf(Props(
-    classOf[MqttPubSub], PSConfig("tcp://test.mosquitto.org:1883", stashCapacity = 10000)
+    new MqttPubSub(PSConfig("tcp://test.mosquitto.org:1883", stashCapacity = 10000))
   ))
   val topic = "com.sandinh.paho.akka/BenchSpec"
 }
