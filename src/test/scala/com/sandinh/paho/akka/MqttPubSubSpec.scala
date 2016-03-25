@@ -47,6 +47,8 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val payload = "12345".getBytes("utf-8")
       pubsub ! new Publish(topic, payload, 2)
 
+      expectMsgAllClassOf(SubscribeSuccess.getClass)
+
       val msg = expectMsgType[Message]
       msg.topic shouldBe topic
       msg.payload shouldEqual payload
