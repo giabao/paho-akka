@@ -1,7 +1,7 @@
 organization := "com.sandinh"
 name := "paho-akka"
 
-version := "1.2.0-CHARIOT-FORK-REV-1"
+version := "1.2.0-CHARIOT-FORK"
 
 scalaVersion := "2.11.7"
 //TODO re-enable cross when scala release version 2.12
