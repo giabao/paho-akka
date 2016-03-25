@@ -24,8 +24,7 @@ object MqttPubSub {
   case class SubscribeAck(subscribe: Subscribe)
   case object SubscribeSuccess
   case class SubscribeFailure(e: Throwable)
-
-  case object MQTTDisconnect
+  case object ConnectedToBroker
 
   class Message(val topic: String, val payload: Array[Byte])
 
@@ -149,7 +148,7 @@ import MqttPubSub._
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
   * 2. MQTT client will auto-reconnect
   */
-class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
+class MqttPubSub(cfg: PSConfig, connectListener: Option[ActorRef] = None) extends FSM[S, Unit] {
   //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
     val c = new MqttAsyncClient(cfg.brokerUrl, MqttAsyncClient.generateClientId(), null)
@@ -187,6 +186,9 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       connectCount = 0
       for ((deadline, x) <- pubSubStash if deadline.hasTimeLeft()) self ! x
       pubSubStash.clear()
+
+      connectListener.foreach { listener => listener ! ConnectedToBroker }
+
       goto(SConnected)
 
     case Event(x @ (_: Publish | _: Subscribe), _) =>
@@ -208,21 +210,29 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(msg @ Subscribe(topic, ref, qos), _) =>
       val encTopic = urlEnc(topic)
-      context.child(encTopic) match {
-        case Some(t) => t ! msg
+
+      val topix = context.child(encTopic) match {
+        case Some(t) =>
+          t
         case None =>
-          val t = context.actorOf(Props[Topic], name = encTopic)
-          t ! msg
-          context watch t
-          //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
-          //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
-          try {
-            client.subscribe(topic, qos, null, new SubscribeListener(ref))
-          } catch {
-            case e: Exception => logger.error(e)(s"can't subscribe to $topic")
-          }
+          context.actorOf(Props[Topic], name = encTopic)
       }
+
+      topix ! msg
+      subscribe(topic, ref, qos, topix)
+
       stay()
+  }
+
+  def subscribe(topic: String, ref: ActorRef, qos: Int, t: ActorRef): Any = {
+    context watch t
+    //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
+    //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
+    try {
+      client.subscribe(topic, qos, null, new SubscribeListener(ref))
+    } catch {
+      case e: Exception => logger.error(e)(s"can't subscribe to $topic")
+    }
   }
 
   whenUnhandled {
@@ -240,7 +250,6 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(Disconnected, _) =>
       delayConnect()
-      context.parent ! MQTTDisconnect
       goto(SDisconnected)
   }
 
