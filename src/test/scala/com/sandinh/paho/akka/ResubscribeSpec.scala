@@ -14,6 +14,11 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
   def this() = this(ActorSystem("ResubscribeSpec"))
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
+  private def processLogger(prefix: String) = ProcessLogger(
+    s => println(s"OUT | $prefix | $s"),
+    s => println(s"ERR | $prefix | $s")
+  )
+
   "MqttPubSub" must {
     "resubsribe after brocker restart" in {
       val topic = "com.sandinh.paho.akka/ResubscribeSpec"
@@ -28,7 +33,7 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
       pubsub ! new Publish(topic, payload, 2)
 
       //start broker
-      val p = "/usr/sbin/mosquitto".run()
+      val p = "/usr/sbin/mosquitto".run(processLogger("mosquitto"))
 
       expectMsg(SubscribeAck(subscribe, None))
 
@@ -43,7 +48,7 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
       pubsub ! new Publish(topic, payload2, 2)
 
       //then start broker again
-      val p2 = "/usr/sbin/mosquitto".run()
+      val p2 = "/usr/sbin/mosquitto".run(processLogger("mosquitto2"))
 
       val msg2 = expectMsgType[Message]
       msg2.topic shouldBe topic
