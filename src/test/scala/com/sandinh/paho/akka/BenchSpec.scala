@@ -74,13 +74,13 @@ private object SubsActor {
   case object Report
 }
 
-private class SubsActor(reporTo: ActorRef, qos: Int) extends Actor with Common {
+private class SubsActor(reportTo: ActorRef, qos: Int) extends Actor with Common {
   import SubsActor._
   def receive = {
     case Run => pubsub ! Subscribe(topic, self, qos)
     case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`)) =>
       context become ready
-      reporTo ! msg
+      reportTo ! msg
   }
 
   private[this] var receivedCount = 0
