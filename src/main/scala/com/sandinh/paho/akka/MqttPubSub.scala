@@ -23,7 +23,9 @@ object MqttPubSub {
     }
   }
 
-  /** TODO support wildcards subscription */
+  /** TODO support wildcards subscription
+    * TODO support Unsubscribe
+    */
   case class Subscribe(topic: String, ref: ActorRef, qos: Int = 0)
 
   case class SubscribeAck(subscribe: Subscribe, fail: Option[Throwable])
@@ -197,9 +199,12 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(Connected, _) =>
       connectCount = 0
+      //resubscribe when receive Connected
+      //note: we should resubscribe the delayed subscriptions before republish the delayed publish messages.
+      //FIXME we should store the pub/sub received time & resend the delayed pub/sub messages in that timed order.
+      subscribes.foreach(self ! _)
       for ((deadline, x) <- pubStash if deadline.hasTimeLeft()) self ! x
       pubStash.clear()
-      subscribes.foreach(self ! _) //resubscribe when receive Connected
       goto(SConnected)
 
     case Event(x: Publish, _) =>
