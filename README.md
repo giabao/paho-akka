@@ -44,6 +44,12 @@ class SubscribeActor extends Actor {
 ## Changelogs
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.3.0-SNAPSHOT
++ update akka 2.4.6, log4s 1.3.0
++ cross compile to scala 2.11.8, 2.12.0-M4
++ update sbt 0.13.11, sbt-scalariform 1.6.0, sbt-sonatype 1.1
++ travis test for oraclejdk8 & openjdk8
+
 ##### v1.2.0
 + update akka 2.4.0 (drop support java7, scala 2.10.x)
 
