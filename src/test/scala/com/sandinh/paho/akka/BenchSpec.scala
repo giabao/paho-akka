@@ -25,9 +25,8 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
 
       val subs = system.actorOf(Props(classOf[SubsActor], testActor, qos))
       subs ! Run
-      within(10.seconds) {
-        expectMsgType[SubscribeAck]
-      }
+      val ack = expectMsgType[SubscribeAck](10.seconds)
+      ack.fail shouldBe None
 
       val pub = system.actorOf(Props(classOf[PubActor], count, qos))
       pub ! Run
@@ -74,7 +73,7 @@ private case object SubsActorReport
 private class SubsActor(reportTo: ActorRef, qos: Int) extends Actor with Common {
   def receive = {
     case Run => pubsub ! Subscribe(topic, self, qos)
-    case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`)) =>
+    case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`), _) =>
       context become ready
       reportTo ! msg
   }

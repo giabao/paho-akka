@@ -40,7 +40,7 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val topic = "com.sandinh.paho.akka/MqttPubSubSpec"
       val subscribe = Subscribe(topic, self, 2)
       pubsub ! subscribe
-      expectMsg(SubscribeAck(subscribe))
+      expectMsg(SubscribeAck(subscribe, None))
 
       pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
 
@@ -57,7 +57,7 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val topic = "com.sandinh.paho.akka/MqttPubSubSpec/2"
       val subscribe = Subscribe(topic, probe.ref, 2)
       pubsub ! subscribe
-      probe.expectMsg(SubscribeAck(subscribe))
+      probe.expectMsg(SubscribeAck(subscribe, None))
       pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
 
       probe.ref ! PoisonPill

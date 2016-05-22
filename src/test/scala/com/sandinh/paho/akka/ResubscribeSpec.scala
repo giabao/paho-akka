@@ -22,14 +22,15 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
       val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://localhost:1883")))
       val subscribe = Subscribe(topic, self, 2)
       pubsub ! subscribe
-      expectMsg(SubscribeAck(subscribe))
 
       //MqttPubSub can receive Publish before connected to broker
-      val payload = "payload".getBytes("utf-8")
+      val payload = "payload".getBytes
       pubsub ! new Publish(topic, payload, 2)
 
       //start broker
       val p = "/usr/sbin/mosquitto".run()
+
+      expectMsg(SubscribeAck(subscribe, None))
 
       val msg = expectMsgType[Message]
       msg.topic shouldBe topic
@@ -38,7 +39,7 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
       //stop broker
       p.destroy()
 
-      val payload2 = "payload2".getBytes("utf-8")
+      val payload2 = "payload2".getBytes
       pubsub ! new Publish(topic, payload2, 2)
 
       //then start broker again

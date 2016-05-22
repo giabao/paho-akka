@@ -1,11 +1,14 @@
 package com.sandinh.paho.akka
 
 import java.net.{URLDecoder, URLEncoder}
-import akka.actor._
-import org.eclipse.paho.client.mqttv3._
+
+import akka.actor.{Actor, ActorRef, FSM, Props, Terminated}
+import org.eclipse.paho.client.mqttv3.{IMqttActionListener, IMqttDeliveryToken, IMqttToken, MqttAsyncClient, MqttCallback, MqttConnectOptions, MqttMessage}
 import MqttConnectOptions.CLEAN_SESSION_DEFAULT
+
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 object MqttPubSub {
   private val logger = org.log4s.getLogger
@@ -21,7 +24,7 @@ object MqttPubSub {
   /** TODO support wildcards subscription */
   case class Subscribe(topic: String, ref: ActorRef, qos: Int = 0)
 
-  case class SubscribeAck(subscribe: Subscribe)
+  case class SubscribeAck(subscribe: Subscribe, fail: Option[Throwable])
 
   class Message(val topic: String, val payload: Array[Byte])
 
@@ -43,10 +46,9 @@ object MqttPubSub {
       case msg: Message =>
         subscribers foreach (_ ! msg)
 
-      case msg @ Subscribe(_, ref, _) =>
+      case Subscribe(_, ref, _) =>
         context watch ref
         subscribers += ref
-        ref ! SubscribeAck(msg)
 
       case Terminated(ref) =>
         subscribers -= ref
@@ -81,13 +83,15 @@ object MqttPubSub {
     }
   }
 
-  private object SubscribeListener extends IMqttActionListener {
+  private class SubscribeListener(owner: Subscribe) extends IMqttActionListener {
     def onSuccess(asyncActionToken: IMqttToken): Unit = {
       logger.info("subscribed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
+      owner.ref ! SubscribeAck(owner, None)
     }
 
     def onFailure(asyncActionToken: IMqttToken, e: Throwable): Unit = {
       logger.error(e)("subscribe failed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
+      owner.ref ! SubscribeAck(owner, Some(e))
     }
   }
 
@@ -211,9 +215,11 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
           //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
           //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
           try {
-            client.subscribe(topic, qos, null, SubscribeListener)
+            client.subscribe(topic, qos, null, new SubscribeListener(msg))
           } catch {
-            case e: Exception => logger.error(e)(s"can't subscribe to $topic")
+            case NonFatal(e) =>
+              ref ! SubscribeAck(msg, Some(e))
+              logger.error(e)(s"can't subscribe to $topic")
           }
       }
       stay()

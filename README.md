@@ -31,8 +31,9 @@ class SubscribeActor extends Actor {
   pubsub ! Subscribe(topic, self)
 
   def receive = {
-    case SubscribeAck(Subscribe(`topic`, `self`, _)) =>
-        context become ready
+    case SubscribeAck(Subscribe(`topic`, `self`, _), fail) =>
+      if (fail.isEmpty) context become ready
+      else logger.error(fail.get, s"Can't subscribe to $topic")
   }
 
   def ready: Receive = {
