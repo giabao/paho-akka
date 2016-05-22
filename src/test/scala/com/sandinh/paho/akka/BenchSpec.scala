@@ -5,7 +5,6 @@ import akka.actor.{ActorRef, Props, Actor, ActorSystem}
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
 import MqttPubSub._
-import com.sandinh.paho.akka.SubsActor.Report
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
@@ -38,7 +37,7 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
 
       implicit val askTimeout = akka.util.Timeout(1, SECONDS)
       for (delay <- 1 to 50 if notDone) {
-        receivedCount = akka.pattern.after(1.seconds, system.scheduler)(subs ? Report).mapTo[Int].futureValue
+        receivedCount = akka.pattern.after(1.seconds, system.scheduler)(subs ? SubsActorReport).mapTo[Int].futureValue
         println(s"$delay: Pub $count Rec $receivedCount ~ ${receivedCount * 100.0 / count}%")
       }
 
@@ -70,12 +69,9 @@ private class PubActor(count: Int, qos: Int) extends Actor with Common {
   }
 }
 
-private object SubsActor {
-  case object Report
-}
+private case object SubsActorReport
 
 private class SubsActor(reportTo: ActorRef, qos: Int) extends Actor with Common {
-  import SubsActor._
   def receive = {
     case Run => pubsub ! Subscribe(topic, self, qos)
     case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`)) =>
@@ -85,7 +81,7 @@ private class SubsActor(reportTo: ActorRef, qos: Int) extends Actor with Common 
 
   private[this] var receivedCount = 0
   def ready: Receive = {
-    case msg: Message => receivedCount += 1
-    case Report       => sender() ! receivedCount
+    case msg: Message    => receivedCount += 1
+    case SubsActorReport => sender() ! receivedCount
   }
 }
