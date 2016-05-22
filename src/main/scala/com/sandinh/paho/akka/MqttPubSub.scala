@@ -200,7 +200,16 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       try {
         client.publish(p.topic, p.message())
       } catch {
-        case e: Exception => logger.error(e)(s"can't publish to ${p.topic}")
+        case NonFatal(e) =>
+          if (client.isConnected) {
+            logger.error(e)(s"can't publish to ${p.topic}")
+          } else {
+            // underlying client can be disconnected when this FSM is in state SConnected
+            // see ResubscribeSpec
+
+            self ! Disconnected // delayConnect & goto SDisconnected
+            self ! p // stash p
+          }
       }
       stay()
 
