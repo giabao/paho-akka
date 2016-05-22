@@ -3,9 +3,11 @@ package com.sandinh.paho.akka
 import java.net.{URLDecoder, URLEncoder}
 
 import akka.actor.{Actor, ActorRef, FSM, Props, Terminated}
-import org.eclipse.paho.client.mqttv3.{IMqttActionListener, IMqttDeliveryToken, IMqttToken, MqttAsyncClient, MqttCallback, MqttConnectOptions, MqttMessage}
+import org.eclipse.paho.client.mqttv3._
+import MqttException.REASON_CODE_CLIENT_NOT_CONNECTED
 import MqttConnectOptions.CLEAN_SESSION_DEFAULT
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
@@ -37,10 +39,12 @@ object MqttPubSub {
   private case object Connect
   private case object Connected
   private case object Disconnected
+  /** @param ref the subscirber actor: Subscribe.ref */
+  private case class SubscriberTerminated(ref: ActorRef)
 
   /** each topic is managed by a Topic actor - which is a child actor of MqttPubSub FSM - with the same name as the topic */
   private class Topic extends Actor {
-    private[this] var subscribers = Set.empty[ActorRef]
+    private[this] val subscribers = mutable.Set.empty[ActorRef]
 
     def receive = {
       case msg: Message =>
@@ -50,8 +54,11 @@ object MqttPubSub {
         context watch ref
         subscribers += ref
 
+      // note: The watching actor will receive a Terminated message even if the watched actor has already been terminated at the time of registration
+      // see http://doc.akka.io/docs/akka/2.4.6/scala/actors.html#Lifecycle_Monitoring_aka_DeathWatch
       case Terminated(ref) =>
         subscribers -= ref
+        context.parent ! SubscriberTerminated(ref)
         if (subscribers.isEmpty) context stop self
     }
   }
@@ -157,9 +164,16 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
   //setup Connnection IMqttActionListener
   private[this] val conListener = new ConnListener(self)
 
-  //use to stash the pub-sub messages when disconnected
-  //note that we do NOT store the sender() in to the stash as in akka.actor.StashSupport#theStash
-  private[this] val pubSubStash = ListBuffer.empty[(Deadline, Any)]
+  /** Use to stash the Publish messages when disconnected.
+    * We need republish to the underlying mqtt client when go to connected.
+    * @note we do NOT store the sender() in to the stash as in `theStash` of [[akka.actor.StashSupport]]
+    */
+  private[this] val pubStash = ListBuffer.empty[(Deadline, Publish)]
+
+  /** Use to stash the Subscribe messages when disconnected.
+    * We need resubscribe to the underlying mqtt client when go to connected.
+    */
+  private[this] val subscribes = mutable.Set.empty[Subscribe]
 
   //reconnect attempt count, reset when connect success
   private[this] var connectCount = 0
@@ -174,7 +188,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       try {
         client.connect(cfg.conOpt, null, conListener)
       } catch {
-        case e: Exception =>
+        case NonFatal(e) =>
           logger.error(e)(s"can't connect to $cfg")
           delayConnect()
       }
@@ -183,15 +197,20 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(Connected, _) =>
       connectCount = 0
-      for ((deadline, x) <- pubSubStash if deadline.hasTimeLeft()) self ! x
-      pubSubStash.clear()
+      for ((deadline, x) <- pubStash if deadline.hasTimeLeft()) self ! x
+      pubStash.clear()
+      subscribes.foreach(self ! _) //resubscribe when receive Connected
       goto(SConnected)
 
-    case Event(x @ (_: Publish | _: Subscribe), _) =>
-      if (pubSubStash.length > cfg.stashCapacity) {
-        pubSubStash.remove(0, cfg.stashCapacity / 2)
+    case Event(x: Publish, _) =>
+      if (pubStash.length > cfg.stashCapacity) {
+        pubStash.remove(0, cfg.stashCapacity / 2)
       }
-      pubSubStash += Tuple2(Deadline.now + cfg.stashTimeToLive, x)
+      pubStash += (Deadline.now + cfg.stashTimeToLive -> x)
+      stay()
+
+    case Event(x: Subscribe, _) =>
+      subscribes += x
       stay()
   }
 
@@ -200,16 +219,12 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       try {
         client.publish(p.topic, p.message())
       } catch {
+        //underlying client can be disconnected when this FSM is in state SConnected. See ResubscribeSpec
+        case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
+          self ! Disconnected //delayConnect & goto SDisconnected
+          self ! p //stash p
         case NonFatal(e) =>
-          if (client.isConnected) {
-            logger.error(e)(s"can't publish to ${p.topic}")
-          } else {
-            // underlying client can be disconnected when this FSM is in state SConnected
-            // see ResubscribeSpec
-
-            self ! Disconnected // delayConnect & goto SDisconnected
-            self ! p // stash p
-          }
+          logger.error(e)(s"can't publish to ${p.topic}")
       }
       stay()
 
@@ -220,16 +235,30 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
         case None =>
           val t = context.actorOf(Props[Topic], name = encTopic)
           t ! msg
+          //TODO consider if we should use `handleChildTerminated` by override `SupervisorStrategy` instead of watch?
           context watch t
           //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
           //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
           try {
             client.subscribe(topic, qos, null, new SubscribeListener(msg))
           } catch {
+            case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
+              self ! Disconnected //delayConnect & goto SDisconnected
+              self ! msg //stash msg
             case NonFatal(e) =>
               ref ! SubscribeAck(msg, Some(e))
               logger.error(e)(s"can't subscribe to $topic")
           }
+      }
+      stay()
+
+    //don't need handle Terminated(topicRef) in state SDisconnected
+    case Event(Terminated(topicRef), _) =>
+      try {
+        client.unsubscribe(urlDec(topicRef.path.name))
+      } catch {
+        case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED => //do nothing
+        case NonFatal(e) => logger.error(e)(s"can't unsubscribe from ${topicRef.path.name}")
       }
       stay()
   }
@@ -239,12 +268,8 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       context.child(urlEnc(msg.topic)) foreach (_ ! msg)
       stay()
 
-    case Event(Terminated(topicRef), _) =>
-      try {
-        client.unsubscribe(urlDec(topicRef.path.name))
-      } catch {
-        case e: Exception => logger.error(e)(s"can't unsubscribe from ${topicRef.path.name}")
-      }
+    case Event(SubscriberTerminated(ref), _) =>
+      subscribes.retain(_.ref != ref)
       stay()
 
     case Event(Disconnected, _) =>
