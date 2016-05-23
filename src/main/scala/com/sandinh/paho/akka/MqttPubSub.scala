@@ -190,7 +190,8 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
   /** contains all subscribing `Subscribe`.
     * + always add when calling the underlying client.subscribe.
     * + always remove when the call is failed and/or remove later when the underlying client notify that the
-    * subscription has either Success or Failed. */
+    * subscription has either Success or Failed.
+    */
   private[this] val subscribing = mutable.Set.empty[Subscribe]
 
   //reconnect attempt count, reset when connect success
@@ -274,10 +275,6 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(UnderlyingSubsAck(topic, fail), _) =>
       val topicSubs = subscribing.filter(_.topic == topic)
-      topicSubs.foreach { sub =>
-        sub.ref ! SubscribeAck(sub, fail)
-        subscribing -= sub
-      }
       fail match {
         case None =>
           val encTopic = urlEnc(topic)
@@ -294,7 +291,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
           }
         case Some(e) => //do nothing
       }
-
+      topicSubs.foreach { sub =>
+        sub.ref ! SubscribeAck(sub, fail)
+        subscribing -= sub
+      }
       stay()
 
     case Event(SubscriberTerminated(ref), _) =>
