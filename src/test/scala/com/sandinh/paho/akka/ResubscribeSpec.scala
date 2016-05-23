@@ -12,49 +12,56 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     with BeforeAndAfterAll with ScalaFutures {
 
   def this() = this(ActorSystem("ResubscribeSpec"))
-  override def afterAll() = TestKit.shutdownActorSystem(system)
+  override def afterAll() = {
+    if (brocker != null) brocker.destroy()
+    if (brocker2 != null) brocker2.destroy()
+    TestKit.shutdownActorSystem(system)
+  }
 
   private def processLogger(prefix: String) = ProcessLogger(
     s => println(s"OUT | $prefix | $s"),
     s => println(s"ERR | $prefix | $s")
   )
 
-  "MqttPubSub" must {
-    "resubsribe after brocker restart" in {
-      val topic = "com.sandinh.paho.akka/ResubscribeSpec"
+  private[this] var brocker: Process = null
+  private[this] var brocker2: Process = null
 
-      //MqttPubSub can operate even when broker not started
-      val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://localhost:1883")))
-      val subscribe = Subscribe(topic, self, 2)
+  private def expectMqttMsg(topic: String, payload: Array[Byte]): Unit = {
+    val msg = expectMsgType[Message]
+    msg.topic shouldBe topic
+    msg.payload shouldEqual payload
+  }
+  val topic = "com.sandinh.paho.akka/ResubscribeSpec"
+  val payload = "payload".getBytes
+
+  "MqttPubSub" must {
+    val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://localhost:1883")), "pubsub")
+    val subscribe = Subscribe(topic, self, 2)
+
+    "Can Subscribe before starting broker" in {
       pubsub ! subscribe
 
-      //MqttPubSub can receive Publish before connected to broker
-      val payload = "payload".getBytes
-      pubsub ! new Publish(topic, payload, 2)
-
-      //start broker
-      val p = "/usr/sbin/mosquitto".run(processLogger("mosquitto"))
+      brocker = "/usr/sbin/mosquitto -v".run(processLogger("mosquitto"))
 
       expectMsg(SubscribeAck(subscribe, None))
 
-      val msg = expectMsgType[Message]
-      msg.topic shouldBe topic
-      msg.payload shouldEqual payload
+      pubsub ! new Publish(topic, payload, 2)
+      expectMqttMsg(topic, payload)
+    }
 
-      //stop broker
-      p.destroy()
+    "Can resubscribe after broker restart" in {
+      brocker.destroy()
+      brocker.exitValue()
+      brocker = null
+
+      brocker2 = "/usr/sbin/mosquitto -v".run(processLogger("mosquitto2"))
+
+      expectMsg(SubscribeAck(subscribe, None))
 
       val payload2 = "payload2".getBytes
       pubsub ! new Publish(topic, payload2, 2)
 
-      //then start broker again
-      val p2 = "/usr/sbin/mosquitto".run(processLogger("mosquitto2"))
-
-      val msg2 = expectMsgType[Message]
-      msg2.topic shouldBe topic
-      msg2.payload shouldEqual payload2
-
-      p2.destroy()
+      expectMqttMsg(topic, payload2)
     }
   }
 }

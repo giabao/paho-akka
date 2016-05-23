@@ -1,14 +1,11 @@
 package com.sandinh.paho.akka
 
 import java.net.{URLDecoder, URLEncoder}
-
 import akka.actor.{Actor, ActorRef, FSM, Props, Terminated}
 import org.eclipse.paho.client.mqttv3._
 import MqttException.REASON_CODE_CLIENT_NOT_CONNECTED
 import MqttConnectOptions.CLEAN_SESSION_DEFAULT
-
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
@@ -41,8 +38,10 @@ object MqttPubSub {
   private case object Connect
   private case object Connected
   private case object Disconnected
-  /** @param ref the subscirber actor: Subscribe.ref */
+  /** @param ref the subscriber actor: Subscribe.ref */
   private case class SubscriberTerminated(ref: ActorRef)
+  /** subscribe ack trigger by calling underlying mqtt client.subscribe */
+  private case class UnderlyingSubsAck(topic: String, fail: Option[Throwable])
 
   /** each topic is managed by a Topic actor - which is a child actor of MqttPubSub FSM - with the same name as the topic */
   private class Topic extends Actor {
@@ -92,15 +91,16 @@ object MqttPubSub {
     }
   }
 
-  private class SubscribeListener(owner: Subscribe) extends IMqttActionListener {
-    def onSuccess(asyncActionToken: IMqttToken): Unit = {
-      logger.info("subscribed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
-      owner.ref ! SubscribeAck(owner, None)
+  private class SubscribeListener(owner: ActorRef) extends IMqttActionListener {
+    def onSuccess(asyncActionToken: IMqttToken) = {
+      val topic = asyncActionToken.getTopics()(0) //getTopics always has len == 1
+      logger.info(s"subscribe success $topic")
+      owner ! UnderlyingSubsAck(topic, None)
     }
-
-    def onFailure(asyncActionToken: IMqttToken, e: Throwable): Unit = {
-      logger.error(e)("subscribe failed to " + asyncActionToken.getTopics.mkString("[", ",", "]"))
-      owner.ref ! SubscribeAck(owner, Some(e))
+    def onFailure(asyncActionToken: IMqttToken, e: Throwable) = {
+      val topic = asyncActionToken.getTopics()(0) //getTopics always has len == 1
+      logger.error(e)(s"subscribe fail $topic")
+      owner ! UnderlyingSubsAck(topic, Some(e))
     }
   }
 
@@ -125,7 +125,7 @@ object MqttPubSub {
       brokerUrl:         String,
       userName:          String         = null,
       password:          String         = null,
-      stashTimeToLive:   FiniteDuration = 1.minute,
+      stashTimeToLive:   Duration       = 1.minute,
       stashCapacity:     Int            = 8000,
       reconnectDelayMin: FiniteDuration = 10.millis,
       reconnectDelayMax: FiniteDuration = 30.seconds,
@@ -166,16 +166,32 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
   //setup Connnection IMqttActionListener
   private[this] val conListener = new ConnListener(self)
 
+  private[this] val subsListener = new SubscribeListener(self)
+
   /** Use to stash the Publish messages when disconnected.
+    * `Long` in Elem type is System.nanoTime when receive the Publish message.
     * We need republish to the underlying mqtt client when go to connected.
-    * @note we do NOT store the sender() in to the stash as in `theStash` of [[akka.actor.StashSupport]]
     */
-  private[this] val pubStash = ListBuffer.empty[(Deadline, Publish)]
+  private[this] val pubStash = mutable.Queue.empty[(Long, Publish)]
 
   /** Use to stash the Subscribe messages when disconnected.
-    * We need resubscribe to the underlying mqtt client when go to connected.
+    * We need resubscribe all subscriptions to the underlying mqtt client when go to connected
+    * , so we store in a separated stash (instead of merging pubStash & subStash).
     */
-  private[this] val subscribes = mutable.Set.empty[Subscribe]
+  private[this] val subStash = mutable.Queue.empty[Subscribe]
+
+  /** contains all successful `Subscribe`.
+    * + add when the underlying client notify that the corresponding topic is successful subscribed.
+    * + remove when the Subscribe.ref actor is terminated.
+    * + use to re-subscribe after reconnected.
+    */
+  private[this] val subscribed = mutable.Set.empty[Subscribe]
+
+  /** contains all subscribing `Subscribe`.
+    * + always add when calling the underlying client.subscribe.
+    * + always remove when the call is failed and/or remove later when the underlying client notify that the
+    * subscription has either Success or Failed. */
+  private[this] val subscribing = mutable.Set.empty[Subscribe]
 
   //reconnect attempt count, reset when connect success
   private[this] var connectCount = 0
@@ -199,23 +215,23 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(Connected, _) =>
       connectCount = 0
-      //resubscribe when receive Connected
-      //note: we should resubscribe the delayed subscriptions before republish the delayed publish messages.
-      //FIXME we should store the pub/sub received time & resend the delayed pub/sub messages in that timed order.
-      subscribes.foreach(self ! _)
-      for ((deadline, x) <- pubStash if deadline.hasTimeLeft()) self ! x
-      pubStash.clear()
+      subscribed foreach doSubscribe
+      while (subStash.nonEmpty) self ! subStash.dequeue()
+      //remove expired Publish messages
+      if (cfg.stashTimeToLive.isFinite())
+        pubStash.dequeueAll(_._1 + cfg.stashTimeToLive.toNanos > System.nanoTime)
+      while (pubStash.nonEmpty) self ! pubStash.dequeue()._2
       goto(SConnected)
 
     case Event(x: Publish, _) =>
-      if (pubStash.length > cfg.stashCapacity) {
-        pubStash.remove(0, cfg.stashCapacity / 2)
-      }
-      pubStash += (Deadline.now + cfg.stashTimeToLive -> x)
+      if (pubStash.length > cfg.stashCapacity)
+        while (pubStash.length > cfg.stashCapacity / 2)
+          pubStash.dequeue()
+      pubStash += (System.nanoTime -> x)
       stay()
 
     case Event(x: Subscribe, _) =>
-      subscribes += x
+      subStash += x
       stay()
   }
 
@@ -233,27 +249,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       }
       stay()
 
-    case Event(msg @ Subscribe(topic, ref, qos), _) =>
-      val encTopic = urlEnc(topic)
-      context.child(encTopic) match {
-        case Some(t) => t ! msg
-        case None =>
-          val t = context.actorOf(Props[Topic], name = encTopic)
-          t ! msg
-          //TODO consider if we should use `handleChildTerminated` by override `SupervisorStrategy` instead of watch?
-          context watch t
-          //FIXME we should store the current qos that client subscribed to topic (in `case Some(t)` above)
-          //then, when received a new Subscribe msg if msg.qos > current qos => need re-subscribe
-          try {
-            client.subscribe(topic, qos, null, new SubscribeListener(msg))
-          } catch {
-            case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
-              self ! Disconnected //delayConnect & goto SDisconnected
-              self ! msg //stash msg
-            case NonFatal(e) =>
-              ref ! SubscribeAck(msg, Some(e))
-              logger.error(e)(s"can't subscribe to $topic")
-          }
+    case Event(sub: Subscribe, _) =>
+      context.child(urlEnc(sub.topic)) match {
+        case Some(t) => t ! sub //Topic t will (only) store & watch sub.ref
+        case None    => doSubscribe(sub)
       }
       stay()
 
@@ -273,13 +272,58 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       context.child(urlEnc(msg.topic)) foreach (_ ! msg)
       stay()
 
+    case Event(UnderlyingSubsAck(topic, fail), _) =>
+      val topicSubs = subscribing.filter(_.topic == topic)
+      topicSubs.foreach { sub =>
+        sub.ref ! SubscribeAck(sub, fail)
+        subscribing -= sub
+      }
+      fail match {
+        case None =>
+          val encTopic = urlEnc(topic)
+          val topicActor = context.child(encTopic) match {
+            case None =>
+              val t = context.actorOf(Props[Topic], name = encTopic)
+              //TODO consider if we should use `handleChildTerminated` by override `SupervisorStrategy` instead of watch?
+              context watch t
+            case Some(t) => t
+          }
+          topicSubs.foreach { sub =>
+            subscribed += sub
+            topicActor ! sub
+          }
+        case Some(e) => //do nothing
+      }
+
+      stay()
+
     case Event(SubscriberTerminated(ref), _) =>
-      subscribes.retain(_.ref != ref)
+      subscribed.retain(_.ref != ref)
       stay()
 
     case Event(Disconnected, _) =>
       delayConnect()
       goto(SDisconnected)
+  }
+
+  private def doSubscribe(sub: Subscribe): Unit = {
+    //Given:
+    //  val subs = subscribing.filter(_.topic == sub.topic)
+    //We need call `client.subscribe` when:
+    //  subs.isEmpty => subscribe first time
+    //  subs.forall(_.qos < sub.qos) => resubscribe with higher qos
+    if (subscribing.forall(x => x.topic != sub.topic || x.qos < sub.qos))
+      try {
+        client.subscribe(sub.topic, sub.qos, null, subsListener)
+      } catch {
+        case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
+          self ! Disconnected //delayConnect & goto SDisconnected
+          self ! sub //stash Subscribe
+        case NonFatal(e) =>
+          self ! UnderlyingSubsAck(sub.topic, Some(e))
+          logger.error(e)(s"subscribe call fail ${sub.topic}")
+      }
+    subscribing += sub
   }
 
   private def delayConnect(): Unit = {
