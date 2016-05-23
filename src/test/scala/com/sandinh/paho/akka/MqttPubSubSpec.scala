@@ -13,7 +13,6 @@ import org.scalatest.Matchers
 import org.scalatest.BeforeAndAfterAll
 
 import scala.concurrent.{Future, Promise}
-import MqttPubSub._
 
 import scala.util.Random
 

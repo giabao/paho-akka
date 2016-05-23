@@ -5,7 +5,6 @@ import java.nio.ByteBuffer
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
-import MqttPubSub._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}

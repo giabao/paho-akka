@@ -2,7 +2,6 @@ package com.sandinh.paho.akka
 
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestFSMRef, TestKit}
-import com.sandinh.paho.akka.MqttPubSub._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import sys.process._
