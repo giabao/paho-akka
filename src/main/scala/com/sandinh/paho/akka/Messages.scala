@@ -26,5 +26,5 @@ class Publish(val topic: String, payload: Array[Byte], qos: Int) {
 }
 
 object Publish {
-  def apply(topic: String, payload: Array[Byte], qos: Int = 0) = new Publish(topic, payload, qos)
+  @inline def apply(topic: String, payload: Array[Byte], qos: Int = 0) = new Publish(topic, payload, qos)
 }
