@@ -50,6 +50,11 @@ we use [Semantic Versioning](http://semver.org/)
 + cross compile to scala 2.11.8, 2.12.0-M4
 + update sbt 0.13.11, sbt-scalariform 1.6.0, sbt-sonatype 1.1
 + travis test for oraclejdk8 & openjdk8
++ fix #2 (PR #7) resubscribe after reconnected
++ PSConfig.stashTimeToLive's type changed from FiniteDuration to Duration. Now it can be Duration.Inf
++ breaking change: `case class SubscribeAck(subscribe: Subscribe)` is changed to
+ `case class SubscribeAck(subscribe: Subscribe, fail: Option[Throwable])`
++ add a helper Dockerfile for local testing using docker
 
 ##### v1.2.0
 + update akka 2.4.0 (drop support java7, scala 2.10.x)
