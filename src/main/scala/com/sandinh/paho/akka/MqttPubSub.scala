@@ -220,7 +220,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       while (subStash.nonEmpty) self ! subStash.dequeue()
       //remove expired Publish messages
       if (cfg.stashTimeToLive.isFinite())
-        pubStash.dequeueAll(_._1 + cfg.stashTimeToLive.toNanos > System.nanoTime)
+        pubStash.dequeueAll(_._1 + cfg.stashTimeToLive.toNanos < System.nanoTime)
       while (pubStash.nonEmpty) self ! pubStash.dequeue()._2
       goto(SConnected)
 
