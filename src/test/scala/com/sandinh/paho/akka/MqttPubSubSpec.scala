@@ -36,9 +36,9 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   "MqttPubSub" must {
     "start, subscribe, publish & receive messages" in {
-      pubsub.stateName shouldBe SDisconnected
+      pubsub.stateName shouldBe DisconnectedState
 
-      def checkState = pubsub.stateName == SConnected
+      def checkState = pubsub.stateName == ConnectedState
       poll(checkState).futureValue shouldBe true
 
       val topic = "paho-akka/MqttPubSubSpec" + Random.nextLong()

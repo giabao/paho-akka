@@ -1,6 +1,6 @@
 package com.sandinh.paho.akka
 
 //++++ FSM states ++++//
-sealed trait S
-case object SDisconnected extends S
-case object SConnected extends S
+sealed trait PSState
+case object DisconnectedState extends PSState
+case object ConnectedState extends PSState

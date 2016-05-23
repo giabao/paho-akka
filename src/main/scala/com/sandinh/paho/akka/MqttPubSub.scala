@@ -6,6 +6,7 @@ import org.eclipse.paho.client.mqttv3._
 import MqttException.REASON_CODE_CLIENT_NOT_CONNECTED
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import MqttPubSub._
 
 object MqttPubSub {
   private[akka] val logger = org.log4s.getLogger
@@ -15,13 +16,11 @@ object MqttPubSub {
   @inline private def urlDec(s: String) = URLDecoder.decode(s, "utf-8")
 }
 
-import MqttPubSub._
-
 /** Notes:
   * 1. MqttClientPersistence will be set to null. @see org.eclipse.paho.client.mqttv3.MqttMessage#setQos(int)
   * 2. MQTT client will auto-reconnect
   */
-class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
+class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
   //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
     val c = new MqttAsyncClient(cfg.brokerUrl, MqttAsyncClient.generateClientId(), null)
@@ -63,9 +62,9 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
   private[this] var connectCount = 0
 
   //++++ FSM logic ++++
-  startWith(SDisconnected, Unit)
+  startWith(DisconnectedState, Unit)
 
-  when(SDisconnected) {
+  when(DisconnectedState) {
     case Event(Connect, _) =>
       logger.info(s"connecting to ${cfg.brokerUrl}..")
       //only receive Connect when client.isConnected == false so its safe here to call client.connect
@@ -87,7 +86,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       if (cfg.stashTimeToLive.isFinite())
         pubStash.dequeueAll(_._1 + cfg.stashTimeToLive.toNanos < System.nanoTime)
       while (pubStash.nonEmpty) self ! pubStash.dequeue()._2
-      goto(SConnected)
+      goto(ConnectedState)
 
     case Event(x: Publish, _) =>
       if (pubStash.length > cfg.stashCapacity)
@@ -101,7 +100,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
       stay()
   }
 
-  when(SConnected) {
+  when(ConnectedState) {
     case Event(p: Publish, _) =>
       try {
         client.publish(p.topic, p.message())
@@ -168,7 +167,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[S, Unit] {
 
     case Event(Disconnected, _) =>
       delayConnect()
-      goto(SDisconnected)
+      goto(DisconnectedState)
   }
 
   private def doSubscribe(sub: Subscribe): Unit = {
