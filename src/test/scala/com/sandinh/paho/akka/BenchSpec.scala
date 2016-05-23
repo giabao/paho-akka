@@ -1,14 +1,17 @@
 package com.sandinh.paho.akka
 
 import java.nio.ByteBuffer
-import akka.actor.{ActorRef, Props, Actor, ActorSystem}
+
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
 import MqttPubSub._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+
 import scala.concurrent.duration._
+import scala.util.Random
 
 class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures {
@@ -22,13 +25,14 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
     "bench ok" in {
       val count = 10000
       val qos = 0
+      val topic = "paho-akka/BenchSpec" + Random.nextLong()
 
-      val subs = system.actorOf(Props(classOf[SubsActor], testActor, qos))
+      val subs = system.actorOf(Props(classOf[SubsActor], testActor, topic, qos))
       subs ! Run
       val ack = expectMsgType[SubscribeAck](10.seconds)
       ack.fail shouldBe None
 
-      val pub = system.actorOf(Props(classOf[PubActor], count, qos))
+      val pub = system.actorOf(Props(classOf[PubActor], count, topic, qos))
       pub ! Run
 
       var receivedCount = 0
@@ -53,10 +57,9 @@ private trait Common { this: Actor =>
   val pubsub = context.actorOf(Props(
     classOf[MqttPubSub], PSConfig("tcp://test.mosquitto.org:1883", stashCapacity = 10000)
   ))
-  val topic = "com.sandinh.paho.akka/BenchSpec"
 }
 
-private class PubActor(count: Int, qos: Int) extends Actor with Common {
+private class PubActor(count: Int, topic: String, qos: Int) extends Actor with Common {
   def receive = {
     case Run =>
       var i = 0
@@ -70,7 +73,7 @@ private class PubActor(count: Int, qos: Int) extends Actor with Common {
 
 private case object SubsActorReport
 
-private class SubsActor(reportTo: ActorRef, qos: Int) extends Actor with Common {
+private class SubsActor(reportTo: ActorRef, topic: String, qos: Int) extends Actor with Common {
   def receive = {
     case Run => pubsub ! Subscribe(topic, self, qos)
     case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`), _) =>
