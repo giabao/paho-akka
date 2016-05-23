@@ -1,15 +1,17 @@
 package com.sandinh.paho.akka
 
 import java.nio.ByteBuffer
-import akka.actor.{ActorRef, Props, Actor, ActorSystem}
+
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
 import MqttPubSub._
-import com.sandinh.paho.akka.SubsActor.Report
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+
 import scala.concurrent.duration._
+import scala.util.Random
 
 class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures {
@@ -23,14 +25,14 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
     "bench ok" in {
       val count = 10000
       val qos = 0
+      val topic = "paho-akka/BenchSpec" + Random.nextLong()
 
-      val subs = system.actorOf(Props(classOf[SubsActor], testActor, qos))
+      val subs = system.actorOf(Props(classOf[SubsActor], testActor, topic, qos))
       subs ! Run
-      within(10.seconds) {
-        expectMsgType[SubscribeAck]
-      }
+      val ack = expectMsgType[SubscribeAck](10.seconds)
+      ack.fail shouldBe None
 
-      val pub = system.actorOf(Props(classOf[PubActor], count, qos))
+      val pub = system.actorOf(Props(classOf[PubActor], count, topic, qos))
       pub ! Run
 
       var receivedCount = 0
@@ -38,7 +40,7 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
 
       implicit val askTimeout = akka.util.Timeout(1, SECONDS)
       for (delay <- 1 to 50 if notDone) {
-        receivedCount = akka.pattern.after(1.seconds, system.scheduler)(subs ? Report).mapTo[Int].futureValue
+        receivedCount = akka.pattern.after(1.seconds, system.scheduler)(subs ? SubsActorReport).mapTo[Int].futureValue
         println(s"$delay: Pub $count Rec $receivedCount ~ ${receivedCount * 100.0 / count}%")
       }
 
@@ -55,10 +57,9 @@ private trait Common { this: Actor =>
   val pubsub = context.actorOf(Props(
     classOf[MqttPubSub], PSConfig("tcp://test.mosquitto.org:1883", stashCapacity = 10000)
   ))
-  val topic = "com.sandinh.paho.akka/BenchSpec"
 }
 
-private class PubActor(count: Int, qos: Int) extends Actor with Common {
+private class PubActor(count: Int, topic: String, qos: Int) extends Actor with Common {
   def receive = {
     case Run =>
       var i = 0
@@ -70,22 +71,19 @@ private class PubActor(count: Int, qos: Int) extends Actor with Common {
   }
 }
 
-private object SubsActor {
-  case object Report
-}
+private case object SubsActorReport
 
-private class SubsActor(reporTo: ActorRef, qos: Int) extends Actor with Common {
-  import SubsActor._
+private class SubsActor(reportTo: ActorRef, topic: String, qos: Int) extends Actor with Common {
   def receive = {
     case Run => pubsub ! Subscribe(topic, self, qos)
-    case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`)) =>
+    case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`), _) =>
       context become ready
-      reporTo ! msg
+      reportTo ! msg
   }
 
   private[this] var receivedCount = 0
   def ready: Receive = {
-    case msg: Message => receivedCount += 1
-    case Report       => sender() ! receivedCount
+    case msg: Message    => receivedCount += 1
+    case SubsActorReport => sender() ! receivedCount
   }
 }

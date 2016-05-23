@@ -1,16 +1,21 @@
 package com.sandinh.paho.akka
 
 import java.net.URLEncoder
-import akka.actor.{PoisonPill, ActorSystem}
+
+import akka.actor.{ActorSystem, PoisonPill}
 import akka.testkit._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{Seconds, Second, Span}
+import org.scalatest.time.{Second, Seconds, Span}
+
 import scala.concurrent.duration._
 import org.scalatest.WordSpecLike
 import org.scalatest.Matchers
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.{Promise, Future}
+
+import scala.concurrent.{Future, Promise}
 import MqttPubSub._
+
+import scala.util.Random
 
 class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures {
@@ -37,10 +42,10 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       def checkState = pubsub.stateName == SConnected
       poll(checkState).futureValue shouldBe true
 
-      val topic = "com.sandinh.paho.akka/MqttPubSubSpec"
+      val topic = "paho-akka/MqttPubSubSpec" + Random.nextLong()
       val subscribe = Subscribe(topic, self, 2)
       pubsub ! subscribe
-      expectMsg(SubscribeAck(subscribe))
+      expectMsg(SubscribeAck(subscribe, None))
 
       pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
 
@@ -54,10 +59,10 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
     "unsubscirbe" in {
       val probe = TestProbe()
-      val topic = "com.sandinh.paho.akka/MqttPubSubSpec/2"
+      val topic = "paho-akka/MqttPubSubSpec/" + Random.nextLong()
       val subscribe = Subscribe(topic, probe.ref, 2)
       pubsub ! subscribe
-      probe.expectMsg(SubscribeAck(subscribe))
+      probe.expectMsg(SubscribeAck(subscribe, None))
       pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
 
       probe.ref ! PoisonPill
