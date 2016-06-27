@@ -16,6 +16,7 @@ import scala.concurrent.duration._
   * we re-schedule Connect with {{{delay = reconnectDelayMin * 2^connectCount}}}
   * @param reconnectDelayMax max delay to retry connecting
   * @param cleanSession Sets whether the client and server should remember state across restarts and reconnects.
+  * @param will A last will and testament message (and topic, and qos) that will be set on the connection.
   */
 case class PSConfig(
     brokerUrl:         String,
@@ -25,7 +26,8 @@ case class PSConfig(
     stashCapacity:     Int            = 8000,
     reconnectDelayMin: FiniteDuration = 10.millis,
     reconnectDelayMax: FiniteDuration = 30.seconds,
-    cleanSession:      Boolean        = CLEAN_SESSION_DEFAULT
+    cleanSession:      Boolean        = CLEAN_SESSION_DEFAULT,
+    will:              Publish        = null
 ) {
 
   //pre-calculate the max of connectCount that: reconnectDelayMin * 2^connectCountMax ~ reconnectDelayMax
@@ -40,6 +42,7 @@ case class PSConfig(
     val opt = new MqttConnectOptions
     if (userName != null) opt.setUserName(userName)
     if (password != null) opt.setPassword(password.toCharArray)
+    if (will != null) opt.setWill(will.topic, will.message().getPayload, will.message().getQos, false)
     opt.setCleanSession(cleanSession)
     opt
   }
