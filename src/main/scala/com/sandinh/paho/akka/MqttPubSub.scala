@@ -200,6 +200,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
   override def postStop(): Unit = {
     super.postStop()
     disconnectedCallback
+    client.disconnectForcibly()
   }
 
   def disconnectedCallback(): Unit = {
