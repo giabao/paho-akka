@@ -57,6 +57,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
     * subscription has either Success or Failed.
     */
   private[this] val subscribing = mutable.Set.empty[Subscribe]
+  private[this] val unsubscribing = mutable.Set.empty[Unsubscribe]
 
   //reconnect attempt count, reset when connect success
   private[this] var connectCount = 0
@@ -98,6 +99,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
     case Event(x: Subscribe, _) =>
       subStash += x
       stay()
+
+    case Event(unsub: Unsubscribe, _) =>
+      subStash.dequeueAll( x => x.ref == unsub.ref && x.topic == unsub.topic)
+      stay()
   }
 
   when(ConnectedState) {
@@ -119,6 +124,13 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
         case Some(t) => t ! sub //Topic t will (only) store & watch sub.ref
         case None    => doSubscribe(sub)
       }
+      stay()
+
+    case Event(unsub: Unsubscribe, _) =>
+      context.child(urlEnc(unsub.topic)) match {
+        case Some(t) => t ! unsub
+      }
+      subscribed.retain( x => x.ref != unsub.ref && x.topic != unsub.topic )
       stay()
 
     //don't need handle Terminated(topicRef) in state SDisconnected
