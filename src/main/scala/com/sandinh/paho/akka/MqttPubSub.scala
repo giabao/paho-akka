@@ -101,7 +101,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
       stay()
 
     case Event(unsub: Unsubscribe, _) =>
-      subStash.dequeueAll( x => x.ref == unsub.ref && x.topic == unsub.topic)
+      subStash.dequeueAll(x => x.ref == unsub.ref && x.topic == unsub.topic)
       stay()
   }
 
@@ -129,8 +129,9 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
     case Event(unsub: Unsubscribe, _) =>
       context.child(urlEnc(unsub.topic)) match {
         case Some(t) => t ! unsub
+        case None    => // do nothing
       }
-      subscribed.retain( x => x.ref != unsub.ref && x.topic != unsub.topic )
+      subscribed.retain(x => x.ref != unsub.ref && x.topic != unsub.topic)
       stay()
 
     //don't need handle Terminated(topicRef) in state SDisconnected
