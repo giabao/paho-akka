@@ -86,6 +86,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
       if (cfg.stashTimeToLive.isFinite())
         pubStash.dequeueAll(_._1 + cfg.stashTimeToLive.toNanos < System.nanoTime)
       while (pubStash.nonEmpty) self ! pubStash.dequeue()._2
+      connectedCallback
       goto(ConnectedState)
 
     case Event(x: Publish, _) =>
@@ -194,6 +195,20 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
     val delay = cfg.connectDelay(connectCount)
     logger.info(s"delay $delay before reconnect")
     setTimer("reconnect", Connect, delay)
+  }
+
+  override def postStop(): Unit = {
+    super.postStop()
+    disconnectedCallback
+    client.disconnectForcibly()
+  }
+
+  def disconnectedCallback(): Unit = {
+    // empty -- subclasses can implement
+  }
+
+  def connectedCallback(): Unit = {
+    // empty -- subclasses can implement
   }
 
   initialize()
