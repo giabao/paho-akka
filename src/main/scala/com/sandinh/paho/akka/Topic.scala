@@ -15,7 +15,7 @@ private class Topic extends Actor {
       context watch ref
       subscribers += ref
 
-    case Unsubscribe(topic: _, ref) =>
+    case Unsubscribe(topic: String, ref) =>
       context unwatch ref
       subscribers -= ref
       ref ! UnsubscribeAck(topic)
