@@ -15,7 +15,7 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
 resolvers += "Paho Releases" at "https://repo.eclipse.org/content/repositories/paho-releases"
 
 libraryDependencies ++= Seq(
-  "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3"  % "1.0.2",
+  "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3"  % "1.1.0",
   "com.typesafe.akka" %% "akka-actor"                     % "2.4.6",
   "org.log4s"         %% "log4s"                          % "1.3.0",
   "org.scalatest"     %% "scalatest"      % "2.2.6"   % Test,
