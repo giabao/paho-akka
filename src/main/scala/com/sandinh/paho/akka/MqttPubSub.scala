@@ -23,7 +23,7 @@ object MqttPubSub {
 class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
   //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
-    val c = new MqttAsyncClient(cfg.brokerUrl, MqttAsyncClient.generateClientId(), null)
+    val c = new MqttAsyncClient(cfg.brokerUrl, determineClientId(cfg), null)
     c.setCallback(new PubSubMqttCallback(self))
     c
   }
@@ -196,6 +196,13 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
     val delay = cfg.connectDelay(connectCount)
     logger.info(s"delay $delay before reconnect")
     setTimer("reconnect", Connect, delay)
+  }
+
+  private def determineClientId(cfg: PSConfig): String = {
+    if (cfg.clientId == null || cfg.clientId.isEmpty) {
+      return MqttAsyncClient.generateClientId()
+    }
+    cfg.clientId
   }
 
   initialize()

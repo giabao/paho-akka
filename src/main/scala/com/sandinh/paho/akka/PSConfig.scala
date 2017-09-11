@@ -21,6 +21,7 @@ case class PSConfig(
     brokerUrl:         String,
     userName:          String         = null,
     password:          String         = null,
+    clientId:          String         = null,
     stashTimeToLive:   Duration       = 1.minute,
     stashCapacity:     Int            = 8000,
     reconnectDelayMin: FiniteDuration = 10.millis,
