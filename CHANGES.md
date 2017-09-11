@@ -2,7 +2,8 @@
 we use [Semantic Versioning](http://semver.org/)
 
 ##### v1.4.0
-+ update akka 2.5.4, scala 2.11.11 & 2.12.3, paho.client.mqttv3 1.2.0, log4s 1.3.6
++ update akka 2.5.4, scala 2.11.11 & 2.12.3, paho.client.mqttv3 1.1.1, log4s 1.3.6
+  Note: Test fail with paho 1.2.0. see https://github.com/eclipse/paho.mqtt.java/issues/405
 + building settings change:
   - update sbt 1.0.1, sbt-sonatype 2.0, sbt-pgp 1.1.0
   - use sbt-coursier

@@ -14,6 +14,8 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
 
 resolvers += "Paho Releases" at "https://repo.eclipse.org/content/repositories/paho-releases"
 
+//for test against multiple paho client versions
+//see https://github.com/eclipse/paho.mqtt.java/issues/405
 def pahoLib() = {
   val lib = "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3"
   System.getenv("PAHO_CLIENT_VERSION") match {
