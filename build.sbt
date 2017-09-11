@@ -1,10 +1,10 @@
 organization := "com.sandinh"
 name := "paho-akka"
 
-version := "1.3.0"
+version := "1.4.0"
 
-scalaVersion := "2.11.8"
-crossScalaVersions := Seq("2.11.8", "2.12.0-M4")
+scalaVersion := "2.12.3"
+crossScalaVersions := Seq("2.11.11", "2.12.3")
 
 scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-feature", "-target:jvm-1.8")
 scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
@@ -15,10 +15,10 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
 resolvers += "Paho Releases" at "https://repo.eclipse.org/content/repositories/paho-releases"
 
 libraryDependencies ++= Seq(
-  "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3"  % "1.0.2",
-  "com.typesafe.akka" %% "akka-actor"                     % "2.4.6",
-  "org.log4s"         %% "log4s"                          % "1.3.0",
-  "org.scalatest"     %% "scalatest"      % "2.2.6"   % Test,
-  "com.typesafe.akka" %% "akka-testkit"   % "2.4.6"   % Test,
-  "ch.qos.logback"    % "logback-classic" % "1.1.7"   % Test
+  "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3"  % "1.2.0",
+  "com.typesafe.akka" %% "akka-actor"                     % "2.5.4",
+  "org.log4s"         %% "log4s"                          % "1.3.6",
+  "org.scalatest"     %% "scalatest"      % "3.0.4"   % Test,
+  "com.typesafe.akka" %% "akka-testkit"   % "2.5.4"   % Test,
+  "ch.qos.logback"    % "logback-classic" % "1.2.3"   % Test
 )
