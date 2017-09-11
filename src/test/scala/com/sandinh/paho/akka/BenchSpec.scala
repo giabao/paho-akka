@@ -74,8 +74,8 @@ private case object Run
 
 private class PubActor(count: Int, topic: String, qos: Int, brokerUrl: String) extends Actor {
   private val pubsub = {
-    val connOptions = ConnOptions(maxInflight = BenchBase.count / 2)
-    val cfg = PSConfig(brokerUrl, connOptions = Right(connOptions), stashCapacity = 10000)
+    val connOptions = ConnOptions(maxInflight = BenchBase.count)
+    val cfg = PSConfig(brokerUrl, connOptions = Right(connOptions), stashCapacity = BenchBase.count)
     context.actorOf(Props(classOf[MqttPubSub], cfg))
   }
 
