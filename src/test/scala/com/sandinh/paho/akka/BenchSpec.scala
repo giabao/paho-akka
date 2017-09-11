@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
+import akka.util.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
@@ -12,36 +13,42 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 import scala.concurrent.duration._
 import scala.util.Random
 
-class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
-    with BeforeAndAfterAll with ScalaFutures {
-  import system.dispatcher
-
-  def this() = this(ActorSystem("BenchSpec"))
+object BenchBase {
+  val count = 10000
+}
+class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
+    extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
+  import system.dispatcher, BenchBase._
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
   "MqttPubSub" must {
-    "bench ok" in {
-      val count = 10000
+    s"bench $brokerUrl" in {
       val qos = 0
       val topic = "paho-akka/BenchSpec" + Random.nextLong()
 
-      val subs = system.actorOf(Props(classOf[SubsActor], testActor, topic, qos))
+      val subs = system.actorOf(Props(classOf[SubsActor], testActor, topic, qos, brokerUrl))
       subs ! Run
       val ack = expectMsgType[SubscribeAck](10.seconds)
       ack.fail shouldBe None
 
-      val pub = system.actorOf(Props(classOf[PubActor], count, topic, qos))
+      val pub = system.actorOf(Props(classOf[PubActor], count, topic, qos, brokerUrl))
       pub ! Run
 
       var receivedCount = 0
+
       def notDone = receivedCount < count
 
-      implicit val askTimeout = akka.util.Timeout(1, SECONDS)
-      for (delay <- 1 to 50 if notDone) {
-        receivedCount = akka.pattern.after(1.seconds, system.scheduler)(subs ? SubsActorReport).mapTo[Int].futureValue
-        println(s"$delay: Pub $count Rec $receivedCount ~ ${receivedCount * 100.0 / count}%")
+      println(s"$benchName start publish $count msg")
+      val now = System.currentTimeMillis()
+
+      implicit val askTimeout: Timeout = Timeout(20, MILLISECONDS)
+      def after[T] = akka.pattern.after[T](1.second, system.scheduler) _
+      for (delay <- 1 to 40 if notDone) {
+        receivedCount = after(subs ? SubsActorReport).mapTo[Int].futureValue
+        println(s"$benchName/$delay: received $receivedCount = ${receivedCount * 100.0 / count}%")
       }
+      println(s"$benchName done in ${(System.currentTimeMillis() - now).toDouble / 1000} seconds")
 
       assert(!notDone)
     }
@@ -50,29 +57,32 @@ class BenchSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSend
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(60, Seconds), Span(1, Second))
 }
 
+class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:1883")
+class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mosquitto.org:1883")
+
 private case object Run
 
-private trait Common { this: Actor =>
-  val pubsub = context.actorOf(Props(
-    classOf[MqttPubSub], PSConfig("tcp://test.mosquitto.org:1883", stashCapacity = 10000)
-  ))
-}
+private class PubActor(count: Int, topic: String, qos: Int, brokerUrl: String) extends Actor {
+  private val pubsub = {
+    val connOptions = ConnOptions(maxInflight = BenchBase.count / 2)
+    val cfg = PSConfig(brokerUrl, connOptions = Right(connOptions), stashCapacity = 10000)
+    context.actorOf(Props(classOf[MqttPubSub], cfg))
+  }
 
-private class PubActor(count: Int, topic: String, qos: Int) extends Actor with Common {
   def receive = {
     case Run =>
-      var i = 0
-      while (i < count) {
+      for (i <- 0 until count) {
         val payload = ByteBuffer.allocate(4).putInt(i).array()
         pubsub ! new Publish(topic, payload, qos)
-        i += 1
       }
   }
 }
 
 private case object SubsActorReport
 
-private class SubsActor(reportTo: ActorRef, topic: String, qos: Int) extends Actor with Common {
+private class SubsActor(reportTo: ActorRef, topic: String, qos: Int, brokerUrl: String) extends Actor {
+  private val pubsub = context.actorOf(Props(classOf[MqttPubSub], PSConfig(brokerUrl)))
+
   def receive = {
     case Run => pubsub ! Subscribe(topic, self, qos)
     case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`), _) =>
