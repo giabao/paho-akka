@@ -8,7 +8,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.concurrent.duration._
 import scala.sys.process.Process
@@ -18,13 +18,12 @@ object BenchBase {
   val count = 10000
 }
 class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
-    extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
+    extends TestKit(_system) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
   import system.dispatcher, BenchBase._
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  "MqttPubSub" must {
-    s"bench $brokerUrl" in {
+  private def test = {
       val qos = 0
       val topic = "paho-akka/BenchSpec" + Random.nextLong()
 
@@ -52,6 +51,12 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
       println(s"$benchName done in ${(System.currentTimeMillis() - now).toDouble / 1000} seconds")
 
       assert(!notDone)
+    }
+
+  "MqttPubSub" must s"bench $brokerUrl" in {
+    System.getenv("PAHO_CLIENT_VERSION") match {
+      case v if v == "1.2.0" || v != null && v.startsWith("1.2.1-SNAPSHOT") => pendingUntilFixed(test)
+      case _ => test
     }
   }
 
