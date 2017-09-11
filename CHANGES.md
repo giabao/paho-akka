@@ -8,7 +8,15 @@ we use [Semantic Versioning](http://semver.org/)
   - use sbt-coursier
   - use sbt-scalafmt-coursier instead of sbt-scalariform
 + pull #13 - Added configurable client id in PSConfig. If left null, the code falls back to a generated ID (compatible with v1.3.x)
-  breaking change: add `PSConfig._clientId`
+  breaking change: add param (& field) `clientId` to `case class PSConfig`. 
++ pull #10 - Support for last will and testament.
++ Able to set a plain `MqttConnectOptions` in PSConfig.
+  breaking change:
+  - `PSConfig.{username, password, cleanSession}` is moved to a new `case class ConnOptions`
+  - add param (& field) `connOptions: Either[MqttConnectOptions, ConnOptions] = Right(ConnOptions())` to `case class PSConfig`.
++ Use a larger default `maxInflight` connect option.
+  The max inflight limits to how many messages we can send without receiving acknowledgments.
+  (new) default is `MqttConnectOptions.MAX_INFLIGHT_DEFAULT * 10`
 
 ##### v1.3.0
 + update akka 2.4.6, log4s 1.3.0

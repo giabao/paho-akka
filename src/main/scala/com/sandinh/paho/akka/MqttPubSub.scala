@@ -1,12 +1,14 @@
 package com.sandinh.paho.akka
 
 import java.net.{URLDecoder, URLEncoder}
+
 import akka.actor.{FSM, Props, Terminated}
 import org.eclipse.paho.client.mqttv3._
-import MqttException.REASON_CODE_CLIENT_NOT_CONNECTED
+import MqttException.{REASON_CODE_CLIENT_NOT_CONNECTED, REASON_CODE_MAX_INFLIGHT}
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import MqttPubSub._
+import org.eclipse.paho.client.mqttv3.internal.MessageCatalog
 
 object MqttPubSub {
   private[akka] val logger = org.log4s.getLogger
@@ -111,6 +113,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
         case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
           self ! Disconnected //delayConnect & goto SDisconnected
           self ! p //stash p
+        case e: MqttException if e.getReasonCode == REASON_CODE_MAX_INFLIGHT =>
+          logger.error(s"can't publish to ${p.topic}. " +
+            MessageCatalog.getMessage(REASON_CODE_MAX_INFLIGHT) +
+            ". Pls use a larger `ConnOptions.maxInflight`")
         case NonFatal(e) =>
           logger.error(e)(s"can't publish to ${p.topic}")
       }
