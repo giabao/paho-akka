@@ -1,6 +1,12 @@
 ## Changelog
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.5.0
++ simplify `case class PSConfig` by (breaking) changing param (also field):
+  `connOptions: Either[MqttConnectOptions, ConnOptions] = Right(ConnOptions())` to:
+  `conOpt:      MqttConnectOptions = ConnOptions().get`
+  (note: `conOpt` is still existed & compatible with v1.4.x)
+
 ##### v1.4.0
 + update akka 2.5.4, scala 2.11.11 & 2.12.3, paho.client.mqttv3 1.1.1, log4s 1.3.6
   Note: Test fail with paho 1.2.0. see https://github.com/eclipse/paho.mqtt.java/issues/405

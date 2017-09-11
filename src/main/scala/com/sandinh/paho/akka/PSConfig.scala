@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 case class PSConfig(
     brokerUrl:         String,
     _clientId:         String        = null,
-    connOptions: Either[MqttConnectOptions, ConnOptions] = Right(ConnOptions()),
+    conOpt:            MqttConnectOptions = ConnOptions().get,
     stashTimeToLive:   Duration       = 1.minute,
     stashCapacity:     Int            = 8000,
     reconnectDelayMin: FiniteDuration = 10.millis,
@@ -34,11 +34,6 @@ case class PSConfig(
     else reconnectDelayMin * (1L << connectCount)
 
   def clientId(): String = if (_clientId == null || _clientId.isEmpty) MqttAsyncClient.generateClientId() else _clientId
-
-  def conOpt: MqttConnectOptions = connOptions match {
-    case Left(c) => c
-    case Right(c) => c.get
-  }
 }
 
 /**
