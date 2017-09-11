@@ -136,7 +136,26 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
 
   whenUnhandled {
     case Event(msg: Message, _) =>
-      context.child(urlEnc(msg.topic)) foreach (_ ! msg)
+      val topicArr = msg.topic.split("/")
+
+      context.children.filter { c =>
+        val nameArr = urlDec(c.path.name).split("/")
+
+        nameArr.last match {
+          case "#" =>
+            topicArr.zip(nameArr.dropRight(1)).forall {
+              case (t, n) => t == n || n == "+"
+            }
+
+          case _ =>
+
+            topicArr.length == nameArr.length &&
+              topicArr.zip(nameArr).forall {
+                case (t, n) => t == n || n == "+"
+              }
+        }
+      }.foreach(_ ! msg)
+
       stay()
 
     case Event(UnderlyingSubsAck(topic, fail), _) =>

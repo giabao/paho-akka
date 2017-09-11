@@ -35,18 +35,32 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
   }
 
   "MqttPubSub" must {
-    "start, subscribe, publish & receive messages" in {
+    "start, subscribe, wildcard subscribe, publish & receive messages" in {
       pubsub.stateName shouldBe DisconnectedState
 
       def checkState = pubsub.stateName == ConnectedState
       poll(checkState).futureValue shouldBe true
 
       val topic = "paho-akka/MqttPubSubSpec" + Random.nextLong()
+      val hashtagTopic = "paho-akka/MqttPubSubSpec/Wildcard/#"
+      val hashtagTestTopic = "paho-akka/MqttPubSubSpec/Wildcard/" + Random.nextLong()
+      val plusTopic = "paho-akka/MqttPubSubSpec/Plus/+/Subtopic"
+      val plusTestTopic = "paho-akka/MqttPubSubSpec/Plus/" + Random.nextLong() + "/Subtopic"
+
       val subscribe = Subscribe(topic, self, 2)
+      val hashtagSubscribe = Subscribe(hashtagTopic, self, 2)
+      val plusSubscribe = Subscribe(plusTopic, self, 2)
+
       pubsub ! subscribe
       expectMsg(SubscribeAck(subscribe, None))
+      pubsub ! hashtagSubscribe
+      expectMsg(SubscribeAck(hashtagSubscribe, None))
+      pubsub ! plusSubscribe
+      expectMsg(SubscribeAck(plusSubscribe, None))
 
       pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
+      pubsub.children.map(_.path.name) should contain(URLEncoder.encode(hashtagTopic, "utf-8"))
+      pubsub.children.map(_.path.name) should contain(URLEncoder.encode(plusTopic, "utf-8"))
 
       val payload = "12345".getBytes("utf-8")
       pubsub ! new Publish(topic, payload, 2)
@@ -54,9 +68,23 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val msg = expectMsgType[Message]
       msg.topic shouldBe topic
       msg.payload shouldEqual payload
+
+      val hashtagPayload = "67890".getBytes("utf-8")
+      pubsub ! new Publish(hashtagTestTopic, hashtagPayload, 2)
+
+      val hashtagMsg = expectMsgType[Message]
+      hashtagMsg.topic shouldBe hashtagTestTopic
+      hashtagMsg.payload shouldEqual hashtagPayload
+
+      val plusPayload = "abcde".getBytes("utf-8")
+      pubsub ! new Publish(plusTestTopic, plusPayload, 2)
+
+      val plusMsg = expectMsgType[Message]
+      plusMsg.topic shouldBe plusTestTopic
+      plusMsg.payload shouldEqual plusPayload
     }
 
-    "unsubscirbe" in {
+    "unsubscribe" in {
       val probe = TestProbe()
       val topic = "paho-akka/MqttPubSubSpec/" + Random.nextLong()
       val subscribe = Subscribe(topic, probe.ref, 2)
