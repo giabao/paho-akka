@@ -58,10 +58,10 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(60, Seconds), Span(1, Second))
 }
 
-class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:1883") with BrockerHelper {
+class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2883") with BrockerHelper {
   private[this] var brocker: Process = _
   override def beforeAll() = {
-    brocker = startBrocker()
+    brocker = startBrocker(port = 2883)
   }
   override def afterAll() = {
     super.afterAll()

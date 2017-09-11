@@ -2,11 +2,12 @@ package com.sandinh.paho.akka
 import sys.process._
 
 trait BrockerHelper {
-  protected def startBrocker(name: String = null): Process = {
-    val logger =
-      if (name == null) ProcessLogger(_ => {}) //ignore output and error
-      else processLogger(name)
-    "/usr/sbin/mosquitto -v".run(logger)
+  protected def startBrocker(logPrefix: String = null, port: Int = 1883): Process = {
+    if (logPrefix == null) {
+      s"/usr/sbin/mosquitto -p $port".run(ProcessLogger(_ => {})) //ignore output and error
+    } else {
+      s"/usr/sbin/mosquitto -p $port -v".run(processLogger(logPrefix))
+    }
   }
 
   private def processLogger(prefix: String) = ProcessLogger(
