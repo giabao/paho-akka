@@ -61,7 +61,7 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
 class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:1883") with BrockerHelper {
   private[this] var brocker: Process = _
   override def beforeAll() = {
-    brocker = startBrocker("mosquitto")
+    brocker = startBrocker()
   }
   override def afterAll() = {
     super.afterAll()
