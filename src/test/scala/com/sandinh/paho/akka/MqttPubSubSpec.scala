@@ -44,14 +44,14 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       val topic = "paho-akka/MqttPubSubSpec" + Random.nextLong()
       val subscribe = Subscribe(topic, self, 2)
       pubsub ! subscribe
-      expectMsg(SubscribeAck(subscribe, None))
+      expectMsg(10.seconds, SubscribeAck(subscribe, None))
 
       pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
 
       val payload = "12345".getBytes("utf-8")
       pubsub ! new Publish(topic, payload, 2)
 
-      val msg = expectMsgType[Message]
+      val msg = expectMsgType[Message](10.seconds)
       msg.topic shouldBe topic
       msg.payload shouldEqual payload
     }
