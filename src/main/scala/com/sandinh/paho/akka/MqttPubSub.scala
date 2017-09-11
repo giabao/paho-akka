@@ -68,18 +68,22 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
 
   when(DisconnectedState) {
     case Event(Connect, _) =>
-      logger.info(s"connecting to ${cfg.brokerUrl}..")
-      //paho client 1.2.0+ will reconnect automaticly (if we call MqttConnectOptions.setReconnect(true))
-      //If the client application calls connect after it had reconnected, an invalid state error will be thrown.
-      //See https://github.com/eclipse/paho.mqtt.java/issues/9
-      try {
-        client.connect(cfg.conOpt, null, conListener)
-      } catch {
-        case NonFatal(e) =>
-          logger.error(e)(s"can't connect to $cfg")
-          delayConnect()
+      if (client.isConnected) {
+        self ! Connected
+      } else {
+        logger.info(s"connecting to ${cfg.brokerUrl}..")
+        //paho client 1.2.0+ will reconnect automaticly (if we call MqttConnectOptions.setReconnect(true))
+        //If the client application calls connect after it had reconnected, an invalid state error will be thrown.
+        //See https://github.com/eclipse/paho.mqtt.java/issues/9
+        try {
+          client.connect(cfg.conOpt, null, conListener)
+        } catch {
+          case NonFatal(e) =>
+            logger.error(e)(s"can't connect to $cfg")
+            delayConnect()
+        }
+        connectCount += 1
       }
-      connectCount += 1
       stay()
 
     case Event(Connected, _) =>
