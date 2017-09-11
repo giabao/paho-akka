@@ -8,7 +8,7 @@ import sys.process._
 
 //https://github.com/giabao/paho-akka/issues/2
 class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
-    with BeforeAndAfterAll with ScalaFutures {
+    with BeforeAndAfterAll with ScalaFutures with BrockerHelper {
 
   def this() = this(ActorSystem("ResubscribeSpec"))
   override def afterAll() = {
@@ -16,11 +16,6 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     if (brocker2 != null) brocker2.destroy()
     TestKit.shutdownActorSystem(system)
   }
-
-  private def processLogger(prefix: String) = ProcessLogger(
-    s => println(s"OUT | $prefix | $s"),
-    s => println(s"ERR | $prefix | $s")
-  )
 
   private[this] var brocker: Process = null
   private[this] var brocker2: Process = null
@@ -40,7 +35,7 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     "Can Subscribe before starting broker" in {
       pubsub ! subscribe
 
-      brocker = "/usr/sbin/mosquitto -v".run(processLogger("mosquitto"))
+      brocker = startBrocker("mosquitto")
 
       expectMsg(SubscribeAck(subscribe, None))
 
@@ -53,7 +48,7 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
       brocker.exitValue()
       brocker = null
 
-      brocker2 = "/usr/sbin/mosquitto -v".run(processLogger("mosquitto2"))
+      brocker2 = startBrocker("mosquitto2")
 
       expectMsg(SubscribeAck(subscribe, None))
 
