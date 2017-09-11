@@ -7,6 +7,8 @@ we use [Semantic Versioning](http://semver.org/)
   - update sbt 1.0.1, sbt-sonatype 2.0, sbt-pgp 1.1.0
   - use sbt-coursier
   - use sbt-scalafmt-coursier instead of sbt-scalariform
++ pull #13 - Added configurable client id in PSConfig. If left null, the code falls back to a generated ID (compatible with v1.3.x)
+  breaking change: add `PSConfig._clientId`
 
 ##### v1.3.0
 + update akka 2.4.6, log4s 1.3.0

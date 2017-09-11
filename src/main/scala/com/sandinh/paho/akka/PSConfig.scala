@@ -1,12 +1,14 @@
 package com.sandinh.paho.akka
 
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.{MqttAsyncClient, MqttConnectOptions}
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions.CLEAN_SESSION_DEFAULT
+
 import scala.concurrent.duration._
 
 /** @param brokerUrl ex tcp://test.mosquitto.org:1883
   * @param userName nullable
   * @param password nullable
+  * @param _clientId MqttAsyncClient id. If left null, the code falls back to a generated ID.
   * @param stashTimeToLive messages received when disconnected will be stash.
   * Messages isOverdue after stashTimeToLive will be discard. See also `stashCapacity`
   * @param stashCapacity pubSubStash will be drop first haft elems when reach this size
@@ -21,6 +23,7 @@ case class PSConfig(
     brokerUrl:         String,
     userName:          String         = null,
     password:          String         = null,
+    _clientId:          String        = null,
     stashTimeToLive:   Duration       = 1.minute,
     stashCapacity:     Int            = 8000,
     reconnectDelayMin: FiniteDuration = 10.millis,
@@ -34,6 +37,8 @@ case class PSConfig(
   def connectDelay(connectCount: Int) =
     if (connectCount >= connectCountMax) reconnectDelayMax
     else reconnectDelayMin * (1L << connectCount)
+
+  def clientId(): String = if (_clientId == null || _clientId.isEmpty) MqttAsyncClient.generateClientId() else _clientId
 
   /** MqttConnectOptions */
   lazy val conOpt = {

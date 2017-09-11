@@ -23,7 +23,7 @@ object MqttPubSub {
 class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
   //setup MqttAsyncClient without MqttClientPersistence
   private[this] val client = {
-    val c = new MqttAsyncClient(cfg.brokerUrl, MqttAsyncClient.generateClientId(), null)
+    val c = new MqttAsyncClient(cfg.brokerUrl, cfg.clientId(), null)
     c.setCallback(new PubSubMqttCallback(self))
     c
   }
