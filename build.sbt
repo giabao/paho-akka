@@ -1,3 +1,5 @@
+import sbt.internal.util.ManagedLogger
+
 organization := "com.sandinh"
 name := "paho-akka"
 
@@ -14,18 +16,28 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
 
 resolvers += "Paho Releases" at "https://repo.eclipse.org/content/repositories/paho-releases"
 
+val pahoLibName = "org.eclipse.paho.client.mqttv3"
+def pahoSnapshotUrl() = {
+  import com.softwaremill.sttp._, okhttp._
+  val v = System.getenv("PAHO_CLIENT_VERSION")
+  val urlBase = s"https://repo.eclipse.org/content/repositories/paho-snapshots/org/eclipse/paho/$pahoLibName/$v"
+  implicit val handler = OkHttpSyncHandler()
+  val res = sttp.get(uri"$urlBase/maven-metadata.xml").send().body.getOrElse(null)
+  val meta = scala.xml.XML.loadString(res)
+  val jarNode = meta \ "versioning" \ "snapshotVersions" \ "snapshotVersion" filter { n =>
+    (n \ "extension").text == "jar" && (n \ "classifier").isEmpty
+  }
+  val fileName = (jarNode \ "value").text
+  s"$urlBase/$pahoLibName-$fileName.jar"
+}
 //for test against multiple paho client versions
 //see https://github.com/eclipse/paho.mqtt.java/issues/405
 lazy val pahoLib = {
-  val lib = "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3"
+  val lib = "org.eclipse.paho" % pahoLibName
   System.getenv("PAHO_CLIENT_VERSION") match {
     case null => lib % "1.1.1"
-    case v if !v.contains("-SNAPSHOT") => lib % v
-    case s =>
-      val i = s.indexOf('/')
-      val v = s.substring(0, i)
-      val fileName = s.substring(i + 1)
-      lib % v from s"https://repo.eclipse.org/content/repositories/paho-snapshots/org/eclipse/paho/org.eclipse.paho.client.mqttv3/$v/org.eclipse.paho.client.mqttv3-$fileName.jar"
+    case v if !v.endsWith("-SNAPSHOT") => lib % v
+    case v => lib % v from pahoSnapshotUrl()
   }
 }
 

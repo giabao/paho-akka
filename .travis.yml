@@ -10,7 +10,7 @@ env:
 - JDK=oraclejdk8
 - JDK=openjdk8
 - JDK=openjdk8 PAHO_CLIENT_VERSION=1.2.0
-- JDK=openjdk8 PAHO_CLIENT_VERSION=1.2.1-SNAPSHOT/1.2.1-20170911.041830-24
+- JDK=openjdk8 PAHO_CLIENT_VERSION=1.2.1-SNAPSHOT
 
 before_install:
   - sudo add-apt-repository ppa:mosquitto-dev/mosquitto-ppa -y
