@@ -8,17 +8,17 @@ import sys.process._
 
 //https://github.com/giabao/paho-akka/issues/2
 class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
-    with BeforeAndAfterAll with ScalaFutures with BrockerHelper {
+    with BeforeAndAfterAll with ScalaFutures with BrokerHelper {
 
   def this() = this(ActorSystem("ResubscribeSpec"))
   override def afterAll() = {
-    if (brocker != null) brocker.destroy()
-    if (brocker2 != null) brocker2.destroy()
+    if (broker != null) broker.destroy()
+    if (broker2 != null) broker2.destroy()
     TestKit.shutdownActorSystem(system)
   }
 
-  private[this] var brocker: Process = null
-  private[this] var brocker2: Process = null
+  private[this] var broker: Process = null
+  private[this] var broker2: Process = null
 
   private def expectMqttMsg(topic: String, payload: Array[Byte]): Unit = {
     val msg = expectMsgType[Message]
@@ -35,7 +35,7 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     "Can Subscribe before starting broker" in {
       pubsub ! subscribe
 
-      brocker = startBrocker("mosquitto")
+      broker = startBroker("mosquitto")
 
       expectMsg(SubscribeAck(subscribe, None))
 
@@ -44,11 +44,11 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     }
 
     "Can resubscribe after broker restart" in {
-      brocker.destroy()
-      brocker.exitValue()
-      brocker = null
+      broker.destroy()
+      broker.exitValue()
+      broker = null
 
-      brocker2 = startBrocker("mosquitto2")
+      broker2 = startBroker("mosquitto2")
 
       expectMsg(SubscribeAck(subscribe, None))
 
