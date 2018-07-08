@@ -15,6 +15,12 @@ private class Topic extends Actor {
       context watch ref
       subscribers += ref
 
+    case Unsubscribe(topic: String, ref) =>
+      context unwatch ref
+      subscribers -= ref
+      ref ! UnsubscribeAck(topic)
+      if (subscribers.isEmpty) context stop self
+
     // note: The watching actor will receive a Terminated message even if the watched actor has already been terminated at the time of registration
     // see http://doc.akka.io/docs/akka/2.4.6/scala/actors.html#Lifecycle_Monitoring_aka_DeathWatch
     case Terminated(ref) =>
