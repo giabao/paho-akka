@@ -3,7 +3,7 @@ import sbt.internal.util.ManagedLogger
 organization := "com.sandinh"
 name := "paho-akka"
 
-version := "1.5.0"
+version := "1.5.1-SNAPSHOT"
 
 scalaVersion := "2.12.3"
 crossScalaVersions := Seq("2.11.11", "2.12.3")
