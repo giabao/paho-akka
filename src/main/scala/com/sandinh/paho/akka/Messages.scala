@@ -8,11 +8,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage
   */
 case class Subscribe(topic: String, ref: ActorRef, qos: Int = 0)
 
-case class Unsubscribe(topic: String, ref: ActorRef)
-
 case class SubscribeAck(subscribe: Subscribe, fail: Option[Throwable])
-
-case class UnsubscribeAck(topic: String)
 
 class Message(val topic: String, val payload: Array[Byte])
 
