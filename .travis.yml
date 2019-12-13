@@ -1,28 +1,25 @@
 sudo: required
-dist: trusty
+dist: bionic
 language: scala
 
-scala:
-- 2.11.11
-- 2.12.3
+jdk:
+  - openjdk8
+  - openjdk11
 
 env:
-- JDK=oraclejdk8
-- JDK=openjdk8
-- JDK=openjdk8 PAHO_CLIENT_VERSION=1.2.0
-- JDK=openjdk8 PAHO_CLIENT_VERSION=1.2.1-SNAPSHOT
+- SCALA_VERSION=2.13.1
+- SCALA_VERSION=2.12.10
+- SCALA_VERSION=2.11.12
+- SCALA_VERSION=2.13.1 PAHO_CLIENT_VERSION=1.2.0
+- SCALA_VERSION=2.13.1 PAHO_CLIENT_VERSION=1.2.2
 
 before_install:
-  - sudo add-apt-repository ppa:mosquitto-dev/mosquitto-ppa -y
-  - sudo apt-get update -q
-  - sudo apt-get install -y mosquitto
+  - sudo apt update -q
+  - sudo apt install -y mosquitto
   - sudo service mosquitto stop
 
-before_script:
-  - jdk_switcher use $JDK
-
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION test
+  - sbt ++$SCALA_VERSION test
 
 before_cache:
 # Cleanup the cached directories to avoid unnecessary cache updates
