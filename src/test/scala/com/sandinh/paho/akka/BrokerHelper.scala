@@ -1,19 +1,19 @@
 package com.sandinh.paho.akka
+import java.io.File
 import sys.process._
 
 trait BrokerHelper {
+  protected val PATH = "/usr/local/sbin:/usr/sbin"
+
   protected def startBroker(logPrefix: String = null, port: Int = 1883): Process = {
-    val brokerFile = {
-      // use /usr/local/sbin/mosquitto (if it exists) before /usr/sbin/mosquitto
-      if (scala.reflect.io.File(scala.reflect.io.Path("/usr/local/sbin/mosquitto")).exists)
-        "/usr/local/sbin/mosquitto"
-      else
-        "/usr/sbin/mosquitto"
-    }
+    val broker = PATH.split(':')
+      .map(p => s"$p/mosquitto")
+      .find(f => new File(f).exists())
+      .getOrElse(throw new RuntimeException(s"not found mosquitto in path $PATH"))
     if (logPrefix == null) {
-      s"$brokerFile -p $port".run(ProcessLogger(_ => {})) //ignore output and error
+      s"$broker -p $port".run(ProcessLogger(_ => {})) //ignore output and error
     } else {
-      s"$brokerFile -p $port -v".run(processLogger(logPrefix))
+      s"$broker -p $port -v".run(processLogger(logPrefix))
     }
   }
 
