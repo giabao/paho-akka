@@ -64,7 +64,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
   private[this] var connectCount = 0
 
   //++++ FSM logic ++++
-  startWith(DisconnectedState, Unit)
+  startWith(DisconnectedState, ())
 
   when(DisconnectedState) {
     case Event(Connect, _) =>
@@ -91,7 +91,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
       subscribed foreach doSubscribe
       while (subStash.nonEmpty) self ! subStash.dequeue()
       //remove expired Publish messages
-      if (cfg.stashTimeToLive.isFinite())
+      if (cfg.stashTimeToLive.isFinite)
         pubStash.dequeueAll(_._1 + cfg.stashTimeToLive.toNanos < System.nanoTime)
       while (pubStash.nonEmpty) self ! pubStash.dequeue()._2
       goto(ConnectedState)
