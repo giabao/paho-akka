@@ -55,8 +55,10 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       msg.topic shouldBe topic
       msg.payload shouldEqual payload
     }
+  }
 
-    "unsubscirbe" in {
+  it must {
+    "unsubscribe" in {
       val probe = TestProbe()
       val topic = "paho-akka/MqttPubSubSpec/" + Random.nextLong()
       val subscribe = Subscribe(topic, probe.ref, 2)

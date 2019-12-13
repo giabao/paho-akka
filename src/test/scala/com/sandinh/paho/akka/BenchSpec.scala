@@ -63,14 +63,14 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(60, Seconds), Span(1, Second))
 }
 
-class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2883") with BrockerHelper {
-  private[this] var brocker: Process = _
+class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2883") with BrokerHelper {
+  private[this] var broker: Process = _
   override def beforeAll() = {
-    brocker = startBrocker(port = 2883)
+    broker = startBroker(port = 2883)
   }
   override def afterAll() = {
     super.afterAll()
-    if (brocker != null) brocker.destroy()
+    if (broker != null) broker.destroy()
   }
 }
 class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mosquitto.org:1883")
