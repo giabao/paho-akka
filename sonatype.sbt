@@ -1,11 +1,6 @@
 publishMavenStyle := true
 
-publishTo in Global := Some(
-  if (isSnapshot.value)
-    Opts.resolver.sonatypeSnapshots
-  else
-    Opts.resolver.sonatypeStaging
-)
+publishTo := sonatypePublishToBundle.value
 
 pomExtra in Global := <url>https://github.com/giabao/paho-akka</url>
   <licenses>
