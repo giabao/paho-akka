@@ -64,14 +64,9 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
       probe.expectMsg(SubscribeAck(subscribe, None))
       pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
 
-      pubsub ! Unsubscribe(topic, probe.ref)
-      probe.expectMsg(UnsubscribeAck(topic))
-
-      val payload = "12345".getBytes("utf-8")
-      pubsub ! new Publish(topic, payload, 2)
-
-      probe.expectNoMsg()
-
+      probe.ref ! PoisonPill
+      akka.pattern.after(1.seconds, system.scheduler)(Future(pubsub.children))
+        .futureValue.map(_.path.name) should not contain URLEncoder.encode(topic, "utf-8")
     }
   }
 
