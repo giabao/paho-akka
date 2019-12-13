@@ -1,51 +1,27 @@
-import sbt.internal.util.ManagedLogger
-
 organization := "com.sandinh"
 name := "paho-akka"
 
 version := "1.5.1-SNAPSHOT"
 
-scalaVersion := "2.12.3"
-crossScalaVersions := Seq("2.11.11", "2.12.3")
+scalaVersion := "2.13.1"
+crossScalaVersions := Seq("2.11.12", "2.12.10", "2.13.1")
 
-scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-feature", "-target:jvm-1.8")
+scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-feature")
 scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
-  case Some((2, 11)) => Seq("-Ybackend:GenBCode")
+  case Some((2, 11)) => Seq("-Ybackend:GenBCode", "-target:jvm-1.8")
+  case Some((2, 12)) => Seq("-target:jvm-1.8")
   case _ => Nil
 })
 
-resolvers += "Paho Releases" at "https://repo.eclipse.org/content/repositories/paho-releases"
-
-val pahoLibName = "org.eclipse.paho.client.mqttv3"
-def pahoSnapshotUrl() = {
-  import com.softwaremill.sttp._, okhttp._
-  val v = System.getenv("PAHO_CLIENT_VERSION")
-  val urlBase = s"https://repo.eclipse.org/content/repositories/paho-snapshots/org/eclipse/paho/$pahoLibName/$v"
-  implicit val handler = OkHttpSyncHandler()
-  val res = sttp.get(uri"$urlBase/maven-metadata.xml").send().body.getOrElse(null)
-  val meta = scala.xml.XML.loadString(res)
-  val jarNode = meta \ "versioning" \ "snapshotVersions" \ "snapshotVersion" filter { n =>
-    (n \ "extension").text == "jar" && (n \ "classifier").isEmpty
-  }
-  val fileName = (jarNode \ "value").text
-  s"$urlBase/$pahoLibName-$fileName.jar"
-}
 //for test against multiple paho client versions
 //see https://github.com/eclipse/paho.mqtt.java/issues/405
-lazy val pahoLib = {
-  val lib = "org.eclipse.paho" % pahoLibName
-  System.getenv("PAHO_CLIENT_VERSION") match {
-    case null => lib % "1.1.1"
-    case v if !v.endsWith("-SNAPSHOT") => lib % v
-    case v => lib % v from pahoSnapshotUrl()
-  }
-}
-
+val pahoVersion = Option(System.getenv("PAHO_CLIENT_VERSION")).getOrElse("1.1.1")
+val akkaVersion = "2.5.27"
 libraryDependencies ++= Seq(
-  pahoLib,
-  "com.typesafe.akka" %% "akka-actor"     % "2.5.4",
-  "org.log4s"         %% "log4s"          % "1.3.6",
-  "org.scalatest"     %% "scalatest"      % "3.0.4"   % Test,
-  "com.typesafe.akka" %% "akka-testkit"   % "2.5.4"   % Test,
+  "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3" % pahoVersion,
+  "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
+  "org.log4s"         %% "log4s"          % "1.8.2",
+  "org.scalatest"     %% "scalatest"      % "3.1.0"   % Test,
+  "com.typesafe.akka" %% "akka-testkit"   % akkaVersion % Test,
   "ch.qos.logback"    % "logback-classic" % "1.2.3"   % Test
 )
