@@ -4,7 +4,7 @@ we use [Semantic Versioning](http://semver.org/)
 ##### v1.5.1
 + update scala 2.11.12, 2.12.10 & add support for scala 2.13 (build with 2.13.1)
 + update akka 2.5.4 -> 2.5.27, log4s 1.8.2
-+ travis test with both openjdk8 & openjdk11
++ travis test with both openjdk8 & openjdk11, using docker
 + also update sbt 1.3.4, sbt plugins & some test libs
 
 ##### v1.5.0
