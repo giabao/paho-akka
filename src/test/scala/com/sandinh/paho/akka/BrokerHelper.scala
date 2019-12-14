@@ -14,7 +14,7 @@ trait BrokerHelper {
 
   protected def startBroker(logPrefix: String = null,
                             port: Int = 1883,
-                            useDocker: Boolean = false): Process = {
+                            useDocker: Boolean = true): Process = {
     val cmd = if (useDocker) {
       s"${fullPath("docker")} run -a stdout -a stderr -p $port:1883 eclipse-mosquitto"
     } else {

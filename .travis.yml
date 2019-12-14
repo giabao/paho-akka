@@ -1,6 +1,7 @@
-sudo: required
 dist: xenial
 language: scala
+services:
+  - docker
 
 jdk:
   - openjdk8
@@ -12,11 +13,6 @@ env:
 - SCALA_VERSION=2.11.12
 - SCALA_VERSION=2.13.1 PAHO_CLIENT_VERSION=1.2.0
 - SCALA_VERSION=2.13.1 PAHO_CLIENT_VERSION=1.2.2
-
-before_install:
-  - sudo apt update -q
-  - sudo apt install -y mosquitto
-  - sudo service mosquitto stop
 
 script:
   - sbt ++$SCALA_VERSION test
