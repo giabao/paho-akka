@@ -28,7 +28,7 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   def poll(f: => Boolean): Future[Boolean] = {
     val p = Promise[Boolean]()
-    val task = system.scheduler.schedule(1.second, 1.second, new Runnable {
+    val task = system.scheduler.scheduleWithFixedDelay(1.second, 1.second)( new Runnable {
       def run() = if (f) p success true
     })
     p.future.andThen { case _ => task.cancel() }
