@@ -30,13 +30,12 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
   val payload = "payload".getBytes
 
   "MqttPubSub" must {
+    broker = startBroker("mosquitto")
     val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://localhost:1883")), "pubsub")
     val subscribe = Subscribe(topic, self, 2)
 
     "Can Subscribe before starting broker" in {
       pubsub ! subscribe
-
-      broker = startBroker("mosquitto")
 
       expectMsg(SubscribeAck(subscribe, None))
 
