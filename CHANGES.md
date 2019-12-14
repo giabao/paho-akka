@@ -1,6 +1,9 @@
 ## Changelog
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.6.0
++ update akka 2.5.27 -> 2.6.1 (drop support for scala 2.11) & paho 1.1.1 -> 1.2.2
+
 ##### v1.5.1
 + update scala 2.11.12, 2.12.10 & add support for scala 2.13 (build with 2.13.1)
 + update akka 2.5.4 -> 2.5.27, log4s 1.8.2
