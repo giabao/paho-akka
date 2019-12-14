@@ -64,6 +64,7 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
 }
 
 class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2883") with BrokerHelper {
+  protected val logger = org.log4s.getLogger
   private[this] var broker: Process = _
   override def beforeAll() = {
     broker = startBroker(port = 2883)

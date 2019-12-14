@@ -9,6 +9,7 @@ import sys.process._
 //https://github.com/giabao/paho-akka/issues/2
 class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures with BrokerHelper {
+  protected val logger = org.log4s.getLogger
 
   def this() = this(ActorSystem("ResubscribeSpec"))
   override def afterAll() = {
@@ -44,9 +45,11 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     }
 
     "Can resubscribe after broker restart" in {
+      logger.info("stopping mosquitto")
       broker.destroy()
       broker.exitValue()
       broker = null
+      logger.info("stopped mosquitto")
 
       broker2 = startBroker("mosquitto2")
 
