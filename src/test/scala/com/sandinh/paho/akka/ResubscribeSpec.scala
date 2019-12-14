@@ -3,11 +3,13 @@ package com.sandinh.paho.akka
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestFSMRef, TestKit}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.BeforeAndAfterAll
 import sys.process._
 
 //https://github.com/giabao/paho-akka/issues/2
-class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
+class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with AnyWordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures with BrokerHelper {
   protected val logger = org.log4s.getLogger
 
