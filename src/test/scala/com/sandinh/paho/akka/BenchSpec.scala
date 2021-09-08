@@ -17,7 +17,7 @@ import scala.util.Random
 object BenchBase {
   val count = 10000
 }
-class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
+class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, waitSeconds: Int)
     extends TestKit(_system) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
   import system.dispatcher, BenchBase._
 
@@ -44,7 +44,7 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
 
       implicit val askTimeout: Timeout = Timeout(20, MILLISECONDS)
       def after[T] = akka.pattern.after[T](1.second, system.scheduler) _
-      for (delay <- 1 to 40 if notDone) {
+      for (delay <- 1 to waitSeconds if notDone) {
         receivedCount = after(subs ? SubsActorReport).mapTo[Int].futureValue
         println(s"$benchName/$delay: received $receivedCount = ${receivedCount * 100.0 / count}%")
       }
@@ -63,7 +63,7 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String)
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(60, Seconds), Span(1, Second))
 }
 
-class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2883") with BrokerHelper {
+class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2883", 5) with BrokerHelper {
   protected val logger = org.log4s.getLogger
   private[this] var broker: Process = _
   override def beforeAll() = {
@@ -74,7 +74,7 @@ class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2
     if (broker != null) broker.destroy()
   }
 }
-class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mosquitto.org:1883")
+class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mosquitto.org:1883", 200)
 
 private case object Run
 
