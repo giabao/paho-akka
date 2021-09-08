@@ -23,5 +23,6 @@ libraryDependencies ++= Seq(
   "org.log4s"         %% "log4s"          % "1.8.2",
   "org.scalatest"     %% "scalatest"      % "3.1.0"   % Test,
   "com.typesafe.akka" %% "akka-testkit"   % akkaVersion % Test,
-  "ch.qos.logback"    % "logback-classic" % "1.2.3"   % Test
+  "ch.qos.logback"    % "logback-classic" % "1.2.3"   % Test,
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.5.0" % Test,
 )
