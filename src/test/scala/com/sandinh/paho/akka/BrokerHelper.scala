@@ -1,8 +1,11 @@
 package com.sandinh.paho.akka
-import java.io.File
+import java.io.{File, FileWriter}
 import sys.process._
 import scala.concurrent.duration._
 import org.log4s.Logger
+
+import java.nio.file.Files
+import scala.util.Using
 
 trait BrokerHelper {
   protected val logger: Logger
@@ -16,7 +19,17 @@ trait BrokerHelper {
                             port: Int = 1883,
                             useDocker: Boolean = true): Process = {
     val cmd = if (useDocker) {
-      s"${fullPath("docker")} run -a stdout -a stderr -p $port:1883 eclipse-mosquitto"
+      val confFile = Files.createTempFile("paho", ".conf").toFile
+      confFile.deleteOnExit()
+      Using.resource(
+        new FileWriter(confFile.getAbsolutePath)
+      )(
+        _.write("""
+           |listener 1883
+           |allow_anonymous true
+           |""".stripMargin)
+      )
+      s"${fullPath("docker")} run -a stdout -a stderr -p $port:1883 -v $confFile:/mosquitto/config/mosquitto.conf eclipse-mosquitto:2"
     } else {
       s"${fullPath("mosquitto")} -p $port -v"
     }
