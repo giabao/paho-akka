@@ -40,7 +40,7 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
       def notDone = receivedCount < count
 
       println(s"$benchName start publish $count msg")
-      val now = System.currentTimeMillis()
+      val timeStart = System.currentTimeMillis()
 
       implicit val askTimeout: Timeout = Timeout(20, MILLISECONDS)
       def after[T] = akka.pattern.after[T](1.second, system.scheduler) _
@@ -48,7 +48,7 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
         receivedCount = after(subs ? SubsActorReport).mapTo[Int].futureValue
         println(s"$benchName/$delay: received $receivedCount = ${receivedCount * 100.0 / count}%")
       }
-      println(s"$benchName done in ${(System.currentTimeMillis() - now).toDouble / 1000} seconds")
+      println(s"$benchName done in ${(System.currentTimeMillis() - timeStart).toDouble / 1000} seconds")
 
       assert(!notDone)
     }
