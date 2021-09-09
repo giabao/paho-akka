@@ -10,7 +10,9 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
 import scala.concurrent.Future
@@ -22,7 +24,7 @@ object BenchBase {
   val count = 10000
 }
 class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, waitSeconds: Int)
-    extends TestKit(_system) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
+    extends TestKit(_system) with ImplicitSender with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
   import system.dispatcher, BenchBase._
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
