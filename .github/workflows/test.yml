@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         java: [ '8', '11', '16' ]
-        scala: [ '2.11.12', '2.12.14', '2.13.6' ]
+        scala: [ '2.11.12', '2.12.15', '2.13.6' ]
     steps:
       - uses: actions/checkout@v2
       - uses: coursier/cache-action@v6

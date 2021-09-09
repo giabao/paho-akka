@@ -4,7 +4,7 @@ name := "paho-akka"
 version := "1.5.1"
 
 scalaVersion := "2.11.12"
-crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6")
+crossScalaVersions := Seq("2.11.12", "2.12.15", "2.13.6")
 
 scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-feature")
 scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
