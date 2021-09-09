@@ -15,7 +15,7 @@ import scala.sys.process.Process
 import scala.util.Random
 
 object BenchBase {
-  val count = 10000
+  val count = 5000
 }
 class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, waitSeconds: Int)
     extends TestKit(_system) with ImplicitSender with FlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
