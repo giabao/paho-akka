@@ -40,10 +40,7 @@ trait BrokerHelper {
     val docker = fullPath("docker")
     assert(s"$docker pull $mosquittoImg".! == 0)
 
-    val cmd =
-      s"""$docker run -a stdout -a stderr -p $port:1883 \\
-         |  -v $confFile:/mosquitto/config/mosquitto.conf \\
-         |  $mosquittoImg""".stripMargin
+    val cmd = s"$docker run -a stdout -a stderr -p $port:1883 -v $confFile:/mosquitto/config/mosquitto.conf $mosquittoImg"
 
     logger.info(cmd)
     val (log, fut) = processLogger(logPrefix, _.endsWith(s"mosquitto version $mosquittoVersion running"))
