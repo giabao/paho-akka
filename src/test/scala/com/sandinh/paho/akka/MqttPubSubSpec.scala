@@ -24,7 +24,7 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mosquitto.org:1883")))
+  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mqtt.ohze.net:1883")))
 
   def poll(f: => Boolean): Future[Boolean] = {
     val p = Promise[Boolean]()

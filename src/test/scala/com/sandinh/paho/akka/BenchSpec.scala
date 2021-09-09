@@ -74,7 +74,7 @@ class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2
     if (broker != null) broker.destroy()
   }
 }
-class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mosquitto.org:1883", 200)
+class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mqtt.ohze.net:1883", 200)
 
 private case object Run
 
