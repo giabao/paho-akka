@@ -15,27 +15,24 @@ trait BrokerHelper {
     .find(f => new File(f).exists())
     .getOrElse(throw new RuntimeException(s"not found $bin in path $PATH"))
 
-  protected def startBroker(logPrefix: String = null,
-                            port: Int = 1883,
-                            useDocker: Boolean = true): Process = {
-    val cmd = if (useDocker) {
-      val confFile = Files.createTempFile("paho", ".conf").toFile
-      confFile.deleteOnExit()
-      Using.resource(
-        new FileWriter(confFile.getAbsolutePath)
-      )(
-        _.write("""
-           |listener 1883
-           |allow_anonymous true
-           |""".stripMargin)
-      )
-      s"${fullPath("docker")} run -a stdout -a stderr -p $port:1883 -v $confFile:/mosquitto/config/mosquitto.conf eclipse-mosquitto:2"
-    } else {
-      s"${fullPath("mosquitto")} -p $port -v"
-    }
+  protected def startBroker(
+    logPrefix: String = null,
+    port: Int = 1883,
+    wait: FiniteDuration = 3.seconds
+  ): Process = {
+    val confFile = Files.createTempFile("paho", ".conf").toFile
+    confFile.deleteOnExit()
+    Using.resource(
+      new FileWriter(confFile.getAbsolutePath)
+    )(
+      _.write("""
+         |listener 1883
+         |allow_anonymous true
+         |""".stripMargin)
+    )
+    val cmd = s"${fullPath("docker")} run -a stdout -a stderr -p $port:1883 -v $confFile:/mosquitto/config/mosquitto.conf eclipse-mosquitto:2"
     logger.info(cmd)
     val ret = cmd.run(processLogger(logPrefix))
-    val wait = 3.seconds
     logger.info(s"waiting $wait for mosquitto start")
     Thread.sleep(wait.toMillis)
     ret
