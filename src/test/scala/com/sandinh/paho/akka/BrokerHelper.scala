@@ -60,8 +60,8 @@ trait BrokerHelper {
       if (prefix != null) log(s"$prefix | $s")
     }
     (ProcessLogger(
-      onStd(_, logger.info),
-      onStd(_, logger.error)
+      onStd(_, logger.info(_)),
+      onStd(_, logger.error(_))
     ), p.future)
   }
 }
