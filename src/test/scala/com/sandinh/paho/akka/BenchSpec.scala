@@ -11,7 +11,7 @@ import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
 import scala.concurrent.duration._
-import scala.sys.process.Process
+import Docker.Process
 import scala.util.Random
 
 object BenchBase {

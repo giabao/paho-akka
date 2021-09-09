@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestFSMRef, TestKit}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
-import sys.process._
+import Docker.Process
 
 //https://github.com/giabao/paho-akka/issues/2
 class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
@@ -18,8 +18,8 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     TestKit.shutdownActorSystem(system)
   }
 
-  private[this] var broker: Process = null
-  private[this] var broker2: Process = null
+  private[this] var broker: Process = _
+  private[this] var broker2: Process = _
 
   private def expectMqttMsg(topic: String, payload: Array[Byte]): Unit = {
     val msg = expectMsgType[Message]
@@ -46,7 +46,6 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     "Can resubscribe after broker restart" in {
       logger.info("stopping mosquitto")
       broker.destroy()
-      broker.exitValue()
       broker = null
       logger.info("stopped mosquitto")
 
