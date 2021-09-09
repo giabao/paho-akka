@@ -1,10 +1,13 @@
 package com.sandinh.paho.akka
+import akka.Done
+
 import java.io.{File, FileWriter}
 import sys.process._
 import scala.concurrent.duration._
 import org.log4s.Logger
 
 import java.nio.file.Files
+import scala.concurrent.{Await, Future, Promise}
 import scala.util.Using
 
 trait BrokerHelper {
@@ -14,6 +17,9 @@ trait BrokerHelper {
     .map(p => s"$p/$bin")
     .find(f => new File(f).exists())
     .getOrElse(throw new RuntimeException(s"not found $bin in path $PATH"))
+
+  private val mosquittoVersion = "2.0.12"
+  private val mosquittoImg = s"eclipse-mosquitto:$mosquittoVersion"
 
   protected def startBroker(
     logPrefix: String = null,
@@ -30,18 +36,32 @@ trait BrokerHelper {
          |allow_anonymous true
          |""".stripMargin)
     )
-    val cmd = s"${fullPath("docker")} run -a stdout -a stderr -p $port:1883 -v $confFile:/mosquitto/config/mosquitto.conf eclipse-mosquitto:2"
+
+    val docker = fullPath("docker")
+    assert(s"$docker pull $mosquittoImg".! == 0)
+
+    val cmd =
+      s"""$docker run -a stdout -a stderr -p $port:1883 \\
+         |  -v $confFile:/mosquitto/config/mosquitto.conf \\
+         |  $mosquittoImg""".stripMargin
+
     logger.info(cmd)
-    val ret = cmd.run(processLogger(logPrefix))
+    val (log, fut) = processLogger(logPrefix, _.endsWith(s"mosquitto version $mosquittoVersion running"))
+    val ret = cmd.run(log)
     logger.info(s"waiting $wait for mosquitto start")
-    Thread.sleep(wait.toMillis)
+    assert(Await.result(fut, wait) == Done)
     ret
   }
 
-  private def processLogger(prefix: String) =
-    if (prefix == null) ProcessLogger(_ => {}) //ignore output and error
-    else ProcessLogger(
-      s => logger.info(s"$prefix | $s"),
-      s => logger.error(s"$prefix | $s")
-    )
+  private def processLogger(prefix: String, doneWhen: String => Boolean): (ProcessLogger, Future[Done]) = {
+    val p = Promise[Done]()
+    def onStd(s: String, log: String => Unit): Unit = {
+      if (doneWhen(s)) p.success(Done)
+      if (prefix != null) log(s"$prefix | $s")
+    }
+    (ProcessLogger(
+      onStd(_, logger.info),
+      onStd(_, logger.error)
+    ), p.future)
+  }
 }
