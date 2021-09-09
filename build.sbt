@@ -20,7 +20,7 @@ val akkaVersion = "2.5.27"
 libraryDependencies ++= Seq(
   "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3" % pahoVersion,
   "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
-  "org.log4s"         %% "log4s"          % "1.8.2",
+  "org.log4s"         %% "log4s"          % "1.10.0",
   "org.scalatest"     %% "scalatest"      % "3.1.0"   % Test,
   "com.typesafe.akka" %% "akka-testkit"   % akkaVersion % Test,
   "ch.qos.logback"    % "logback-classic" % "1.2.3"   % Test,
