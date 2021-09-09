@@ -1,10 +1,11 @@
 package com.sandinh.paho.akka
 import akka.Done
+import org.log4s.Logger.LevelLogger
 
 import java.io.{File, FileWriter}
 import sys.process._
 import scala.concurrent.duration._
-import org.log4s.Logger
+import org.log4s.{Info, Logger, Warn}
 
 import java.nio.file.Files
 import scala.concurrent.{Await, Future, Promise}
@@ -22,7 +23,7 @@ trait BrokerHelper {
   private val mosquittoImg = s"eclipse-mosquitto:$mosquittoVersion"
 
   protected def startBroker(
-    logPrefix: String = null,
+    logPrefix: String = "",
     port: Int = 1883,
     wait: FiniteDuration = 6.seconds
   ): Process = {
@@ -55,13 +56,16 @@ trait BrokerHelper {
 
   private def processLogger(prefix: String, doneWhen: String => Boolean): (ProcessLogger, Future[Done]) = {
     val p = Promise[Done]()
-    def onStd(s: String, log: String => Unit): Unit = {
-      if (doneWhen(s)) p.success(Done)
-      if (prefix != null) log(s"$prefix | $s")
+    def onStd(s: String, log: LevelLogger): Unit = {
+      if (doneWhen(s)) {
+        log(s"$prefix | Done!!")
+        p.success(Done)
+      }
+      log(s"$prefix | $s")
     }
     (ProcessLogger(
-      onStd(_, logger.info(_)),
-      onStd(_, logger.error(_))
+      onStd(_, logger(Info)),
+      onStd(_, logger(Warn))
     ), p.future)
   }
 }
