@@ -1,7 +1,9 @@
 package com.sandinh.paho.akka
 
-import java.nio.ByteBuffer
+import ByteArrayConverters._
 
+import akka.Done
+import akka.actor.Actor.emptyBehavior
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.testkit.{ImplicitSender, TestKit}
@@ -10,6 +12,8 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
+import scala.annotation.tailrec
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import Docker.Process
 import scala.util.Random
@@ -28,29 +32,32 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
       val topic = "paho-akka/BenchSpec" + Random.nextLong()
 
       val subs = system.actorOf(Props(classOf[SubsActor], testActor, topic, qos, brokerUrl))
-      subs ! Run
       val ack = expectMsgType[SubscribeAck](10.seconds)
       ack.fail shouldBe None
 
-      val pub = system.actorOf(Props(classOf[PubActor], count, topic, qos, brokerUrl))
-      pub ! Run
-
-      var receivedCount = 0
-
-      def notDone = receivedCount < count
+      system.actorOf(Props(classOf[PubActor], count, topic, qos, brokerUrl))
 
       println(s"$benchName start publish $count msg")
       val timeStart = System.currentTimeMillis()
 
       implicit val askTimeout: Timeout = Timeout(20, MILLISECONDS)
-      def after[T] = akka.pattern.after[T](1.second, system.scheduler) _
-      for (delay <- 1 to waitSeconds if notDone) {
-        receivedCount = after(subs ? SubsActorReport).mapTo[Int].futureValue
-        println(s"$benchName/$delay: received $receivedCount = ${receivedCount * 100.0 / count}%")
-      }
-      println(s"$benchName done in ${(System.currentTimeMillis() - timeStart).toDouble / 1000} seconds")
+      def askAfter = akka.pattern
+        .after(1.second, system.scheduler)(subs ? SubsActorReport)
+        .mapTo[Int]
 
-      assert(!notDone)
+      @tailrec
+      def askLoop(runCount: Int): Future[Done] = {
+        if (runCount >= waitSeconds) {
+          Future.failed(new Exception(s"runCount exceed $waitSeconds"))
+        } else {
+          val receivedCount = askAfter.futureValue.ensuring(_ <= count)
+          println(s"$benchName/$runCount: received $receivedCount = ${receivedCount * 100.0 / count}%")
+          if (receivedCount == count) Future.successful(Done)
+          else askLoop(runCount + 1)
+        }
+      }
+      askLoop(1).futureValue shouldBe Done
+      println(s"$benchName done in ${(System.currentTimeMillis() - timeStart).toDouble / 1000} seconds")
     }
 
   "MqttPubSub" must s"bench $brokerUrl" in {
@@ -74,9 +81,7 @@ class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2
     if (broker != null) broker.destroy()
   }
 }
-class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mqtt.ohze.net:1883", 200)
-
-private case object Run
+class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mqtt.ohze.net:1883", 40)
 
 private class PubActor(count: Int, topic: String, qos: Int, brokerUrl: String) extends Actor {
   private val pubsub = {
@@ -85,30 +90,27 @@ private class PubActor(count: Int, topic: String, qos: Int, brokerUrl: String) e
     context.actorOf(Props(classOf[MqttPubSub], cfg))
   }
 
-  def receive = {
-    case Run =>
-      for (i <- 0 until count) {
-        val payload = ByteBuffer.allocate(4).putInt(i).array()
-        pubsub ! new Publish(topic, payload, qos)
-      }
+  for (i <- 0 until count) {
+    pubsub ! new Publish(topic, i.toByteArray, qos)
   }
+
+  def receive: Receive = emptyBehavior
 }
 
 private case object SubsActorReport
 
 private class SubsActor(reportTo: ActorRef, topic: String, qos: Int, brokerUrl: String) extends Actor {
   private val pubsub = context.actorOf(Props(classOf[MqttPubSub], PSConfig(brokerUrl)))
+  pubsub ! Subscribe(topic, self, qos)
 
-  def receive = {
-    case Run => pubsub ! Subscribe(topic, self, qos)
+  def receive: Receive = {
     case msg @ SubscribeAck(Subscribe(`topic`, `self`, `qos`), _) =>
-      context become ready
       reportTo ! msg
+      context become ready(0)
   }
 
-  private[this] var receivedCount = 0
-  def ready: Receive = {
-    case msg: Message    => receivedCount += 1
+  def ready(receivedCount: Int): Receive = {
+    case _: Message      => context become ready(receivedCount + 1)
     case SubsActorReport => sender() ! receivedCount
   }
 }
