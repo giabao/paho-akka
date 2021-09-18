@@ -14,7 +14,7 @@ import scala.util.{Random, Using}
 trait BrokerHelper {
   protected val logger: Logger
 
-  private val mosquittoVersion = "2.0.12"
+  private val mosquittoVersion = sys.env.getOrElse("MOSQUITTO_VERSION", "2.0.12")
   private val mosquittoImg = s"eclipse-mosquitto:$mosquittoVersion"
 
   protected def startBroker(
