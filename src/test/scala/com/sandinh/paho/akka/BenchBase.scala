@@ -72,19 +72,6 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(60, Seconds), Span(1, Second))
 }
 
-class LocalBenchSpec extends BenchBase(ActorSystem("L"), "L", "tcp://localhost:2883", 5) with BrokerHelper {
-  protected val logger = org.log4s.getLogger
-  private[this] var broker: Process = _
-  override def beforeAll() = {
-    broker = startBroker(port = 2883)
-  }
-  override def afterAll() = {
-    super.afterAll()
-    if (broker != null) broker.destroy()
-  }
-}
-class RemoteBenchSpec extends BenchBase(ActorSystem("R"), "R", "tcp://test.mqtt.ohze.net:1883", 40)
-
 private class PubActor(count: Int, topic: String, qos: Int, brokerUrl: String) extends Actor {
   private val pubsub = {
     val conOpt = ConnOptions(maxInflight = BenchBase.count).get
