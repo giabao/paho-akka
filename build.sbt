@@ -13,9 +13,7 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
   case _ => Nil
 })
 
-//for test against multiple paho client versions
-//see https://github.com/eclipse/paho.mqtt.java/issues/405
-val pahoVersion = Option(System.getenv("PAHO_CLIENT_VERSION")).getOrElse("1.1.1")
+val pahoVersion = "1.1.1"
 val akkaVersion = "2.5.27"
 libraryDependencies ++= Seq(
   "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3" % pahoVersion,

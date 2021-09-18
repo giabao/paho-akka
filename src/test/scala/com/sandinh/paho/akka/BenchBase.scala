@@ -29,7 +29,7 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  private def test = {
+  "MqttPubSub" must s"bench $brokerUrl" in {
       val qos = 0
       val topic = "paho-akka/BenchSpec" + Random.nextLong()
 
@@ -61,13 +61,6 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
       askLoop(1).futureValue shouldBe Done
       println(s"$benchName done in ${(System.currentTimeMillis() - timeStart).toDouble / 1000} seconds")
     }
-
-  "MqttPubSub" must s"bench $brokerUrl" in {
-    System.getenv("PAHO_CLIENT_VERSION") match {
-      case v if v == "1.2.0" || v != null && v.startsWith("1.2.1-SNAPSHOT") => pendingUntilFixed(test)
-      case _ => test
-    }
-  }
 
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(60, Seconds), Span(1, Second))
 }
