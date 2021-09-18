@@ -13,7 +13,7 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
   case _ => Nil
 })
 
-val pahoVersion = "1.1.1"
+val pahoVersion = "1.2.5"
 val akkaVersion = "2.5.27"
 libraryDependencies ++= Seq(
   "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3" % pahoVersion,
