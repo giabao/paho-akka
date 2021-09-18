@@ -53,9 +53,9 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system)
       broker = null
       logger.info("stopped mosquitto")
 
-      broker2 = startBroker("mosquitto2")
+      broker2 = startBroker("mosquitto2", wait = 3.seconds)
 
-      expectMsg(SubscribeAck(subscribe, None))
+      expectMsg(6.seconds, SubscribeAck(subscribe, None))
 
       val payload2 = "payload2".getBytes
       pubsub ! new Publish(topic, payload2, 2)
