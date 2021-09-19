@@ -140,9 +140,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
           self ! Disconnected //delayConnect & goto SDisconnected
           self ! p //stash p
         case e: MqttException if e.getReasonCode == REASON_CODE_MAX_INFLIGHT =>
-          logger.error(s"can't publish to ${p.topic}. " +
-            MessageCatalog.getMessage(REASON_CODE_MAX_INFLIGHT) +
-            ". Pls use a larger `ConnOptions.maxInflight`")
+          // This case should not be matched because we limit inflight message using inflight & inflight0
+          logger.error(s"can't publish to ${p.topic}. ${
+            MessageCatalog.getMessage(REASON_CODE_MAX_INFLIGHT)
+          }. $inflight0, $inflight, ${client.getInFlightMessageCount}")
         case NonFatal(e) =>
           logger.error(s"can't publish to ${p.topic}", e)
       }

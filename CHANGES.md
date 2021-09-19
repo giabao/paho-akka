@@ -10,6 +10,7 @@ we use [Semantic Versioning](http://semver.org/)
 + support scala 3.0.2. Use akka 2.6 `for3Use2_13`
 + Minor break change: PSConfig.conOpt is now a ConnOptions instead of MqttConnectOptions
 + Add `ConnOptions.maxInflightQos12` for better [Flow Control](https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html#_Toc3901251)
+  `ConnOptions.maxInflight` now can and should be set small. We don't flood publishing beyond `maxInflight` even with qos 0.
 + remove `log4s` dependency. Use `slf4j` directly
 + update `org.eclipse.paho.client.mqttv3` 1.1.1 -> 1.2.5
 + (build) update sbt & sbt plugins
