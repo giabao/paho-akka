@@ -16,6 +16,11 @@ jobs:
           java-version: ${{ matrix.java }}
           distribution: 'temurin'
       - uses: coursier/cache-action@v6
+      - run: |
+          sbt ++${{ matrix.scala }} "testOnly com.sandinh.paho.akka.RemoteBenchSpec"
+        shell: bash
+        env:
+          REMOTE_BROKER: "tcp://test.mqtt.ohze.net:1883"
       # https://www.scala-sbt.org/1.x/docs/GitHub-Actions-with-sbt.html#Caching
       - run: |
           sbt ++${{ matrix.scala }} test
