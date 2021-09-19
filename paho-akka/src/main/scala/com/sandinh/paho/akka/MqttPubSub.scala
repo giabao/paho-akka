@@ -185,7 +185,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
           val encTopic = urlEnc(topic)
           val topicActor = context.child(encTopic) match {
             case None =>
-              val t = context.actorOf(Props[Topic], name = encTopic)
+              val t = context.actorOf(Props[Topic](), name = encTopic)
               //TODO consider if we should use `handleChildTerminated` by override `SupervisorStrategy` instead of watch?
               context watch t
             case Some(t) => t
