@@ -6,14 +6,16 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+
 import scala.concurrent.duration._
 import Docker.Process
+import org.slf4j.{Logger, LoggerFactory}
 
 //https://github.com/giabao/paho-akka/issues/2
 class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system)
     with ImplicitSender with AnyWordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures with BrokerHelper {
-  protected val logger = org.log4s.getLogger
+  protected val logger: Logger = LoggerFactory.getLogger("ResubscribeSpec")
 
   def this() = this(ActorSystem("ResubscribeSpec"))
   override def afterAll() = {

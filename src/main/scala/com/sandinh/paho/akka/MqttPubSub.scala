@@ -1,21 +1,22 @@
 package com.sandinh.paho.akka
 
 import java.net.{URLDecoder, URLEncoder}
-
 import akka.actor.{FSM, Props, Terminated}
 import org.eclipse.paho.client.mqttv3._
 import MqttException.{REASON_CODE_CLIENT_NOT_CONNECTED, REASON_CODE_MAX_INFLIGHT}
+
 import scala.collection.mutable
 import scala.util.control.NonFatal
 import MqttPubSub._
 import org.eclipse.paho.client.mqttv3.internal.MessageCatalog
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 import scala.util.Try
 
 object MqttPubSub {
-  private[akka] val logger = org.log4s.getLogger
+  private[akka] val logger = LoggerFactory.getLogger("MqttPubSub")
 
   //++++ ultilities ++++//
   @inline private def urlEnc(s: String) = URLEncoder.encode(s, "utf-8")
@@ -83,7 +84,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
           client.connect(cfg.conOpt.get, null, conListener)
         } catch {
           case NonFatal(e) =>
-            logger.error(e)(s"can't connect to $cfg")
+            logger.error(s"can't connect to $cfg", e)
             delayConnect()
         }
         connectCount += 1
@@ -143,7 +144,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
             MessageCatalog.getMessage(REASON_CODE_MAX_INFLIGHT) +
             ". Pls use a larger `ConnOptions.maxInflight`")
         case NonFatal(e) =>
-          logger.error(e)(s"can't publish to ${p.topic}")
+          logger.error(s"can't publish to ${p.topic}", e)
       }
       stay()
 
@@ -166,7 +167,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
         client.unsubscribe(urlDec(topicRef.path.name))
       } catch {
         case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED => //do nothing
-        case NonFatal(e) => logger.error(e)(s"can't unsubscribe from ${topicRef.path.name}")
+        case NonFatal(e) => logger.error(s"can't unsubscribe from ${topicRef.path.name}", e)
       }
       stay()
   }
@@ -224,7 +225,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
           self ! sub //stash Subscribe
         case NonFatal(e) =>
           self ! UnderlyingSubsAck(sub.topic, Some(e))
-          logger.error(e)(s"subscribe call fail ${sub.topic}")
+          logger.error(s"subscribe call fail ${sub.topic}", e)
       }
     subscribing += sub
   }

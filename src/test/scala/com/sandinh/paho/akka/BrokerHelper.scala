@@ -4,9 +4,9 @@ import akka.Done
 import java.io.{File, FileWriter}
 import sys.process._
 import Docker.Process
-import scala.concurrent.duration._
-import org.log4s.Logger
+import org.slf4j.Logger
 
+import scala.concurrent.duration._
 import java.nio.file.Files
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.{Random, Using}
