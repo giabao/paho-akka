@@ -10,6 +10,10 @@ import scala.util.control.NonFatal
 import MqttPubSub._
 import org.eclipse.paho.client.mqttv3.internal.MessageCatalog
 
+import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.duration._
+import scala.util.Try
+
 object MqttPubSub {
   private[akka] val logger = org.log4s.getLogger
 
@@ -234,4 +238,28 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
   initialize()
 
   self ! Connect
+
+  onTermination {
+    case e =>
+      log.info("stop {}", e)
+      val wait = 29.seconds
+      Try {
+        Await.result(disconnectClient(wait), wait + 1.second)
+      }.recover {
+        case NonFatal(_) => client.disconnectForcibly(0, wait.toMillis)
+      }.map { _ =>
+        client.close(true)
+      }.recover {
+        case NonFatal(e) => log.error(e, "Can't close client")
+      }.get
+  }
+
+  private def disconnectClient(wait: FiniteDuration): Future[Unit] = {
+    val p = Promise[Unit]()
+    client.disconnect(wait.toMillis, null, new IMqttActionListener {
+      override def onSuccess(t: IMqttToken): Unit = p.success(())
+      override def onFailure(t: IMqttToken, e: Throwable): Unit = p.failure(e)
+    })
+    p.future
+  }
 }
