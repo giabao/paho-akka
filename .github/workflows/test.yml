@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         java: [ '8', '11', '16' ]
-        scala: [ '2.11.12', '2.12.15', '2.13.6', '3.0.2' ]
+        sbtmatrix: [ '2_5', '2_52_11', '2_52_12', '2_6', '2_62_12', '2_63' ]
     steps:
       - uses: actions/checkout@v2
       - uses: coursier/cache-action@v6
@@ -17,13 +17,13 @@ jobs:
           distribution: 'temurin'
       - uses: coursier/cache-action@v6
       - run: |
-          sbt ++${{ matrix.scala }} "testOnly com.sandinh.paho.akka.RemoteBenchSpec"
+          sbt "paho-akka_${{ matrix.sbtmatrix }}/testOnly com.sandinh.paho.akka.RemoteBenchSpec"
         shell: bash
         env:
           REMOTE_BROKER: "tcp://test.mqtt.ohze.net:1883"
       # https://www.scala-sbt.org/1.x/docs/GitHub-Actions-with-sbt.html#Caching
       - run: |
-          sbt ++${{ matrix.scala }} test
+          sbt "paho-akka_${{ matrix.sbtmatrix }}/test"
           rm -rf "$HOME/.ivy2/local" || true
           find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
           find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
