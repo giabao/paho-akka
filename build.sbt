@@ -1,26 +1,50 @@
-organization := "com.sandinh"
-name := "paho-akka"
+import CrossVersion.for3Use2_13
 
-version := "1.6.0"
+inThisBuild(Seq(
+  organization := "com.sandinh",
+  version := "1.6.1",
+))
 
-scalaVersion := "2.13.1"
-crossScalaVersions := Seq("2.12.10", "2.13.1")
+lazy val akka25 = ConfigAxis("_2_5", "-akka2.5")
+lazy val akka26 = ConfigAxis("_2_6", "-akka2.6")
+lazy val akkaVersion = settingKey[String]("akkaVersion")
 
-scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-feature")
-scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
+lazy val depsSetting = libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-actor"   % akkaVersion.value        cross for3Use2_13,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test cross for3Use2_13,
+  "org.eclipse.paho"       % "org.eclipse.paho.client.mqttv3" % "1.2.5",
+  "org.slf4j"              % "slf4j-api"                      % "1.7.32",
+  "org.scalatest"          %% "scalatest"                     % "3.2.9"   % Test,
+  "ch.qos.logback"         % "logback-classic"                % "1.2.6"   % Test,
+  "org.scala-lang.modules" %% "scala-collection-compat"       % "2.5.0"   % Test,
+)
+
+lazy val scalacSetting = scalacOptions ++= Seq(
+  "-encoding", "UTF-8", "-deprecation", "-feature"
+) ++ (CrossVersion.scalaApiVersion(scalaVersion.value) match {
+  case Some((2, 11)) => Seq("-Ybackend:GenBCode", "-target:jvm-1.8")
   case Some((2, 12)) => Seq("-target:jvm-1.8")
   case _ => Nil
 })
 
-//for test against multiple paho client versions
-//see https://github.com/eclipse/paho.mqtt.java/issues/405
-val pahoVersion = Option(System.getenv("PAHO_CLIENT_VERSION")).getOrElse("1.2.2")
-val akkaVersion = "2.6.1"
-libraryDependencies ++= Seq(
-  "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3" % pahoVersion,
-  "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
-  "org.log4s"         %% "log4s"          % "1.8.2",
-  "org.scalatest"     %% "scalatest"      % "3.1.0"   % Test,
-  "com.typesafe.akka" %% "akka-testkit"   % akkaVersion % Test,
-  "ch.qos.logback"    % "logback-classic" % "1.2.3"   % Test
-)
+lazy val `paho-akka` = projectMatrix
+  .customRow(
+    scalaVersions = Seq("2.11.12", "2.12.15", "2.13.6"),
+    axisValues = Seq(akka25, VirtualAxis.jvm),
+    Seq(
+      akkaVersion := "2.5.32",
+      moduleName := name.value + "_2_5",
+      depsSetting,
+      scalacSetting
+    ),
+  )
+  .customRow(
+    scalaVersions = Seq("2.12.15", "2.13.6", "3.0.2"),
+    axisValues = Seq(akka26, VirtualAxis.jvm),
+    Seq(
+      akkaVersion := "2.6.16",
+      moduleName := name.value,
+      depsSetting,
+      scalacSetting
+    ),
+  )

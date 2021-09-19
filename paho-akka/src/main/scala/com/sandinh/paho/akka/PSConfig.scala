@@ -18,8 +18,8 @@ import scala.concurrent.duration._
   */
 case class PSConfig(
     brokerUrl:         String,
-    _clientId:         String        = null,
-    conOpt:            MqttConnectOptions = ConnOptions().get,
+    _clientId:         String         = null,
+    conOpt:            ConnOptions    = ConnOptions(),
     stashTimeToLive:   Duration       = 1.minute,
     stashCapacity:     Int            = 8000,
     reconnectDelayMin: FiniteDuration = 10.millis,
@@ -41,8 +41,13 @@ case class PSConfig(
   * @param username nullable
   * @param password nullable
   * @param cleanSession Sets whether the client and server should remember state across restarts and reconnects
-  * @param maxInflight The max inflight limits to how many messages we can send without receiving acknowledgments.
+  * @param maxInflight The max inflight limits to how many messages (include qos 0, 1, 2) we can send without receiving acknowledgments.
   *                    Default is `MAX_INFLIGHT_DEFAULT * 10`
+  * @param maxInflightQos12 maxInflight for Publish with qos > 0.
+  *                         In mqttv5, see [[https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html#_Toc3901251 4.9 Flow Control]].
+  *                         When using mqttv3 client, server may still hardcode this setting,
+  *                         ex with mosquitto: [[https://mosquitto.org/man/mosquitto-conf-5.html max_inflight_messages]].
+  *                         TODO in mqttv5, we need update this number when receiving CONNACK
   * @param will A last will and testament message (and topic, and qos) that will be set on the connection
   */
 case class ConnOptions(
@@ -50,7 +55,8 @@ case class ConnOptions(
     password:     String  = null,
     cleanSession: Boolean = CLEAN_SESSION_DEFAULT,
     maxInflight:  Int     = MAX_INFLIGHT_DEFAULT * 10,
-    will:         Publish = null
+    will:         Publish = null,
+    maxInflightQos12: Int = MAX_INFLIGHT_DEFAULT
 ) {
   lazy val get: MqttConnectOptions = {
     val opt = new MqttConnectOptions

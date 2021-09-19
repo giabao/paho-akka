@@ -3,15 +3,19 @@ package com.sandinh.paho.akka
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestFSMRef, TestKit}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterAll
-import sys.process._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+
+import scala.concurrent.duration._
+import Docker.Process
+import org.slf4j.{Logger, LoggerFactory}
 
 //https://github.com/giabao/paho-akka/issues/2
-class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with AnyWordSpecLike with Matchers
+class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system)
+    with ImplicitSender with AnyWordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures with BrokerHelper {
-  protected val logger = org.log4s.getLogger
+  protected val logger: Logger = LoggerFactory.getLogger("ResubscribeSpec")
 
   def this() = this(ActorSystem("ResubscribeSpec"))
   override def afterAll() = {
@@ -20,8 +24,8 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     TestKit.shutdownActorSystem(system)
   }
 
-  private[this] var broker: Process = null
-  private[this] var broker2: Process = null
+  private[this] var broker: Process = _
+  private[this] var broker2: Process = _
 
   private def expectMqttMsg(topic: String, payload: Array[Byte]): Unit = {
     val msg = expectMsgType[Message]
@@ -48,13 +52,12 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system) with Implic
     "Can resubscribe after broker restart" in {
       logger.info("stopping mosquitto")
       broker.destroy()
-      broker.exitValue()
       broker = null
       logger.info("stopped mosquitto")
 
-      broker2 = startBroker("mosquitto2")
+      broker2 = startBroker("mosquitto2", wait = 3.seconds)
 
-      expectMsg(SubscribeAck(subscribe, None))
+      expectMsg(6.seconds, SubscribeAck(subscribe, None))
 
       val payload2 = "payload2".getBytes
       pubsub ! new Publish(topic, payload2, 2)

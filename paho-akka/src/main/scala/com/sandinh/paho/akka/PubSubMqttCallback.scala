@@ -6,7 +6,7 @@ import MqttPubSub.logger
 
 private class PubSubMqttCallback(owner: ActorRef) extends MqttCallback {
   def connectionLost(cause: Throwable): Unit = {
-    logger.error(cause)("connection lost")
+    logger.error("connection lost", cause)
     owner ! Disconnected
   }
   /** only logging */

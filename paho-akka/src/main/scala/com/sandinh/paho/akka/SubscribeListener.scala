@@ -12,7 +12,7 @@ private class SubscribeListener(owner: ActorRef) extends IMqttActionListener {
   }
   def onFailure(asyncActionToken: IMqttToken, e: Throwable) = {
     val topic = asyncActionToken.getTopics()(0) //getTopics always has len == 1
-    logger.error(e)(s"subscribe fail $topic")
+    logger.error(s"subscribe fail $topic", e)
     owner ! UnderlyingSubsAck(topic, Some(e))
   }
 }

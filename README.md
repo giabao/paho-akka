@@ -1,7 +1,7 @@
 paho-akka
 =========
 [![Known Vulnerabilities](https://snyk.io/test/github/mramshaw/paho-akka/badge.svg?style=plastic&targetFile=build.sbt)](https://snyk.io/test/github/mramshaw/paho-akka?style=plastic&targetFile=build.sbt)
-[![Build Status](https://travis-ci.org/giabao/paho-akka.svg)](https://travis-ci.org/giabao/paho-akka)
+[![CI](https://github.com/giabao/paho-akka/actions/workflows/test.yml/badge.svg)](https://github.com/giabao/paho-akka/actions/workflows/test.yml)
 
 ## What?
 This is a Publish Subscribe library for [akka](http://akka.io/) to pub/sub to a MQTT server - ex [mosquitto](http://mosquitto.org/).

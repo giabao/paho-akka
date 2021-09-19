@@ -16,7 +16,8 @@ import scala.concurrent.{Future, Promise}
 
 import scala.util.Random
 
-class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with AnyWordSpecLike with Matchers
+class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system)
+    with ImplicitSender with AnyWordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures {
   import system.dispatcher
 
@@ -24,11 +25,11 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mosquitto.org:1883")))
+  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mqtt.ohze.net:1883")))
 
   def poll(f: => Boolean): Future[Boolean] = {
     val p = Promise[Boolean]()
-    val task = system.scheduler.scheduleWithFixedDelay(1.second, 1.second)( new Runnable {
+    val task = system.scheduler.schedule(1.second, 1.second, new Runnable {
       def run() = if (f) p success true
     })
     p.future.andThen { case _ => task.cancel() }
