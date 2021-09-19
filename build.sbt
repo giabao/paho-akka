@@ -2,7 +2,7 @@ import CrossVersion.for3Use2_13
 
 inThisBuild(Seq(
   organization := "com.sandinh",
-  version := "1.5.1",
+  version := "1.6.1",
 ))
 
 lazy val akka25 = ConfigAxis("_2_5", "-akka2.5")
