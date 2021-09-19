@@ -1,6 +1,24 @@
 ## Changelog
 we use [Semantic Versioning](http://semver.org/)
 
+##### v1.6.1
++ re-support akka 2.5 for scala `[2.11, 2.12, 2.13]`
+  For akka 2.5, please use `libraryDependencies += "com.sandinh" %% "paho-akka_2_5" % "1.6.1"`
+  For akka 2.6, use `"com.sandinh" %% "paho-akka" % "1.6.1"` as normal
++ update akka 2.5.27 -> 2.5.32, 2.6.1 -> 2.6.16
++ update scala 2.12.10 -> 2.12.15, 2.13.1 -> 2.13.6
++ support scala 3.0.2. Use akka 2.6 `for3Use2_13`
++ Minor break change: PSConfig.conOpt is now a ConnOptions instead of MqttConnectOptions
++ Add `ConnOptions.maxInflightQos12` for better [Flow Control](https://docs.oasis-open.org/mqtt/mqtt/v5.0/os/mqtt-v5.0-os.html#_Toc3901251)
++ remove `log4s` dependency. Use `slf4j` directly
++ update `org.eclipse.paho.client.mqttv3` 1.1.1 -> 1.2.5
++ (build) update sbt & sbt plugins
++ (ci) migrate from travis to github action & test against multiple brokers (mosquitto & hive)
++ (test) update scalatest 3.2.9
+
+##### v1.6.0
++ update akka 2.5.27 -> 2.6.1 (drop support for scala 2.11) & paho 1.1.1 -> 1.2.2
+
 ##### v1.5.1
 + update scala 2.11.12, 2.12.10 & add support for scala 2.13 (build with 2.13.1)
 + update akka 2.5.4 -> 2.5.27, log4s 1.8.2
