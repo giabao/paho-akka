@@ -10,36 +10,34 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.{BeforeAndAfterAll, Outcome, Retries}
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 
 import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import Docker.Process
 import scala.util.Random
 
-object BenchBase {
-  val count = 10000
-}
-class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, waitSeconds: Int)
-    extends TestKit(_system) with ImplicitSender with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
-  import system.dispatcher, BenchBase._
+class BenchBase(benchName: String) extends TestKit(ActorSystem("benchName"))
+  with ImplicitSender with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures with Retries {
+  import system.dispatcher
 
-  override def afterAll() = TestKit.shutdownActorSystem(system)
+  override def afterAll(): Unit = TestKit.shutdownActorSystem(system, 1.minute)
 
-  "MqttPubSub" must s"bench $brokerUrl" in {
-      val qos = 0
-      val topic = "paho-akka/BenchSpec" + Random.nextLong()
+  override def withFixture(test: NoArgTest): Outcome =
+    withRetry { super.withFixture(test) }
+
+  def benchTest(brokerUrl: String, qos: Int, maxRunCount: Int, msgCount: Int): Unit = {
+      val topic = s"paho-akka/$benchName/${Random.nextLong()}"
 
       val subs = system.actorOf(Props(classOf[SubsActor], testActor, topic, qos, brokerUrl))
-      val ack = expectMsgType[SubscribeAck](10.seconds)
+      val ack = expectMsgType[SubscribeAck](20.seconds)
       ack.fail shouldBe None
 
-      system.actorOf(Props(classOf[PubActor], count, topic, qos, brokerUrl))
+      system.actorOf(Props(classOf[PubActor], topic, qos, brokerUrl, msgCount))
 
-      println(s"$benchName start publish $count msg")
+      println(s"$benchName/$qos start publish $msgCount msg")
       val timeStart = System.currentTimeMillis()
 
       implicit val askTimeout: Timeout = Timeout(20, MILLISECONDS)
@@ -49,27 +47,27 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
 
       @tailrec
       def askLoop(runCount: Int): Future[Done] = {
-        if (runCount >= waitSeconds) {
-          Future.failed(new Exception(s"runCount exceed $waitSeconds"))
+        if (runCount >= maxRunCount) {
+          Future.failed(new Exception(s"runCount exceed $maxRunCount"))
         } else {
-          val receivedCount = askAfter.futureValue.ensuring(_ <= count)
-          println(s"$benchName/$runCount: received $receivedCount = ${receivedCount * 100.0 / count}%")
-          if (receivedCount == count) Future.successful(Done)
+          val receivedCount = askAfter.futureValue.ensuring(_ <= msgCount)
+          println(s"$benchName/$qos/$runCount: received $receivedCount = ${receivedCount * 100.0 / msgCount}%")
+          if (receivedCount == msgCount) Future.successful(Done)
           else askLoop(runCount + 1)
         }
       }
       askLoop(1).futureValue shouldBe Done
-      println(s"$benchName done in ${(System.currentTimeMillis() - timeStart).toDouble / 1000} seconds")
+      println(s"$benchName/$qos done in ${(System.currentTimeMillis() - timeStart).toDouble / 1000} seconds")
     }
 
   override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(60, Seconds), Span(1, Second))
 }
 
-private class PubActor(count: Int, topic: String, qos: Int, brokerUrl: String) extends Actor {
+private class PubActor(topic: String, qos: Int, brokerUrl: String, count: Int) extends Actor {
   private val pubsub = {
     val cfg = PSConfig(
       brokerUrl,
-      conOpt = ConnOptions(maxInflight = 20, receiveMaximum = 10),
+      conOpt = ConnOptions(maxInflight = 10, maxInflightQos12 = 10),
       stashCapacity = count
     )
     context.actorOf(Props(classOf[MqttPubSub], cfg))
