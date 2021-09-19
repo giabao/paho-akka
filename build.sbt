@@ -67,5 +67,6 @@ inThisBuild(Seq(
       "crawford@kloognome.com",
       url("http://www.kloognome.com")
     ),
-  )
+  ),
+  versionScheme := Some("semver-spec"),
 ))
