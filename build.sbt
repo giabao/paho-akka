@@ -14,7 +14,7 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
 })
 
 val pahoVersion = "1.2.5"
-val akkaVersion = "2.5.27"
+val akkaVersion = "2.5.32"
 libraryDependencies ++= Seq(
   "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3" % pahoVersion,
   "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
