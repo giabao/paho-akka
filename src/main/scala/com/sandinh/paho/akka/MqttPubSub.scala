@@ -106,12 +106,29 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
     case Event(x: Subscribe, _) =>
       subStash += x
       stay()
+
+    case Event(PublishComplete(qos0), _) =>
+      if (qos0) inflight0 -= 1
+      else inflight -= 1
+      stay()
   }
 
+  private[this] var inflight0 = 0
+  private[this] var inflight = 0
+
   when(ConnectedState) {
+    case Event(p: Publish, _)
+      if inflight0 + inflight >= cfg.conOpt.maxInflight ||
+        p.qos > 0 && inflight >= cfg.conOpt.maxInflightQos12 =>
+      pubStash += (System.nanoTime -> p)
+      stay()
+
     case Event(p: Publish, _) =>
+      val onPublish = new PublishListener(self, p.qos == 0)
       try {
-        client.publish(p.topic, p.message())
+        client.publish(p.topic, p.message(), null, onPublish)
+        if (p.qos == 0) inflight0 += 1
+        else inflight += 1
       } catch {
         //underlying client can be disconnected when this FSM is in state SConnected. See ResubscribeSpec
         case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
@@ -124,6 +141,12 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
         case NonFatal(e) =>
           logger.error(e)(s"can't publish to ${p.topic}")
       }
+      stay()
+
+    case Event(PublishComplete(qos0), _) =>
+      if (qos0) inflight0 -= 1
+      else inflight -= 1
+      if (pubStash.nonEmpty) self ! pubStash.dequeue()._2
       stay()
 
     case Event(sub: Subscribe, _) =>

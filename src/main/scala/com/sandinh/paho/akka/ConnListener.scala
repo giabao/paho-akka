@@ -15,3 +15,12 @@ private class ConnListener(owner: ActorRef) extends IMqttActionListener {
     owner ! Disconnected
   }
 }
+
+private class PublishListener(owner: ActorRef, qos0: Boolean) extends IMqttActionListener {
+  override def onSuccess(t: IMqttToken): Unit =
+    owner ! PublishComplete(qos0)
+  override def onFailure(t: IMqttToken, e: Throwable): Unit = {
+    logger.error(e)("publish failed")
+    owner ! PublishComplete(qos0)
+  }
+}

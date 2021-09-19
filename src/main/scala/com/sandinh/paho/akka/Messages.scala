@@ -17,7 +17,7 @@ class Message(val topic: String, val payload: Array[Byte])
   * Send an instance of this class to the MqttPubSub actor for publishing:
   * {{{ pubsub ! Publish("some_topic", "12345".getBytes }}}
   */
-class Publish(val topic: String, payload: Array[Byte], qos: Int) {
+class Publish(val topic: String, payload: Array[Byte], val qos: Int) {
   def message() = {
     val msg = new MqttMessage(payload)
     msg.setQos(qos)
@@ -28,3 +28,5 @@ class Publish(val topic: String, payload: Array[Byte], qos: Int) {
 object Publish {
   @inline def apply(topic: String, payload: Array[Byte], qos: Int = 0) = new Publish(topic, payload, qos)
 }
+
+private case class PublishComplete(qos0: Boolean)
