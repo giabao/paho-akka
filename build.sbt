@@ -3,8 +3,8 @@ name := "paho-akka"
 
 version := "1.5.1"
 
-scalaVersion := "2.13.1"
-crossScalaVersions := Seq("2.11.12", "2.12.10", "2.13.1")
+scalaVersion := "2.11.12"
+crossScalaVersions := Seq("2.11.12", "2.12.15", "2.13.6")
 
 scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-feature")
 scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
@@ -13,15 +13,14 @@ scalacOptions ++= (CrossVersion.scalaApiVersion(scalaVersion.value) match {
   case _ => Nil
 })
 
-//for test against multiple paho client versions
-//see https://github.com/eclipse/paho.mqtt.java/issues/405
-val pahoVersion = Option(System.getenv("PAHO_CLIENT_VERSION")).getOrElse("1.1.1")
-val akkaVersion = "2.5.27"
+val pahoVersion = "1.2.5"
+val akkaVersion = "2.5.32"
 libraryDependencies ++= Seq(
   "org.eclipse.paho"  % "org.eclipse.paho.client.mqttv3" % pahoVersion,
   "com.typesafe.akka" %% "akka-actor"     % akkaVersion,
-  "org.log4s"         %% "log4s"          % "1.8.2",
-  "org.scalatest"     %% "scalatest"      % "3.1.0"   % Test,
+  "org.slf4j"         % "slf4j-api"       % "1.7.32",
+  "org.scalatest"     %% "scalatest"      % "3.2.9"   % Test,
   "com.typesafe.akka" %% "akka-testkit"   % akkaVersion % Test,
-  "ch.qos.logback"    % "logback-classic" % "1.2.3"   % Test
+  "ch.qos.logback"    % "logback-classic" % "1.2.5"   % Test,
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.5.0" % Test,
 )

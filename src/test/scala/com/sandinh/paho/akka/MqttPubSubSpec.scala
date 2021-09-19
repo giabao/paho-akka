@@ -8,15 +8,16 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
 
 import scala.concurrent.duration._
-import org.scalatest.WordSpecLike
-import org.scalatest.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterAll
 
 import scala.concurrent.{Future, Promise}
 
 import scala.util.Random
 
-class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with ImplicitSender with WordSpecLike with Matchers
+class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system)
+    with ImplicitSender with AnyWordSpecLike with Matchers
     with BeforeAndAfterAll with ScalaFutures {
   import system.dispatcher
 
@@ -24,7 +25,7 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system) with Implici
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mosquitto.org:1883")))
+  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mqtt.ohze.net:1883")))
 
   def poll(f: => Boolean): Future[Boolean] = {
     val p = Promise[Boolean]()
