@@ -1,10 +1,5 @@
 import CrossVersion.for3Use2_13
 
-inThisBuild(Seq(
-  organization := "com.sandinh",
-  version := "1.6.1",
-))
-
 lazy val akka25 = ConfigAxis("_2_5", "-akka2.5")
 lazy val akka26 = ConfigAxis("_2_6", "-akka2.6")
 lazy val akkaVersion = settingKey[String]("akkaVersion")
@@ -48,3 +43,29 @@ lazy val `paho-akka` = projectMatrix
       scalacSetting
     ),
   )
+
+inThisBuild(Seq(
+  organization := "com.sandinh",
+  homepage := Some(url("https://github.com/giabao/paho-akka")),
+  licenses := Seq("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+  developers := List(
+    Developer(
+      "thanhbv",
+      "Bui Viet Thanh",
+      "thanhbv@sandinh.net",
+      url("https://sandinh.com")
+    ),
+    Developer(
+      "mramshaw",
+      "Martin Ramshaw",
+      "mramshaw@alumni.concordia.ca",
+      url("https://github.com/mramshaw")
+    ),
+    Developer(
+      "crawford42",
+      "Robert Crawford",
+      "crawford@kloognome.com",
+      url("http://www.kloognome.com")
+    ),
+  )
+))
