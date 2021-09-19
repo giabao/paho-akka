@@ -10,7 +10,7 @@ import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Second, Seconds, Span}
-import org.scalatest.{BeforeAndAfterAll, Outcome, Retries}
+import org.scalatest.{BeforeAndAfterAll, Canceled, Failed, Outcome}
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
 
@@ -20,13 +20,22 @@ import scala.concurrent.duration._
 import scala.util.Random
 
 class BenchBase(benchName: String) extends TestKit(ActorSystem("benchName"))
-  with ImplicitSender with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures with Retries {
+  with ImplicitSender with AnyFlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
   import system.dispatcher
 
   override def afterAll(): Unit = TestKit.shutdownActorSystem(system, 1.minute)
 
   override def withFixture(test: NoArgTest): Outcome =
-    withRetry { super.withFixture(test) }
+    withFixture(test, 3)
+
+  /** @see [[org.scalatest.Retries]] */
+  def withFixture(test: NoArgTest, retries: Int): Outcome =
+    super.withFixture(test) match {
+      case Failed(_) | Canceled(_) =>
+        if (retries == 1) super.withFixture(test)
+        else withFixture(test, retries - 1)
+      case other => other
+    }
 
   def benchTest(brokerUrl: String, qos: Int, maxRunCount: Int, msgCount: Int): Unit = {
       val topic = s"paho-akka/$benchName/${Random.nextLong()}"
