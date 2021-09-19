@@ -67,8 +67,11 @@ class BenchBase(_system: ActorSystem, benchName: String, brokerUrl: String, wait
 
 private class PubActor(count: Int, topic: String, qos: Int, brokerUrl: String) extends Actor {
   private val pubsub = {
-    val conOpt = ConnOptions(maxInflight = BenchBase.count).get
-    val cfg = PSConfig(brokerUrl, conOpt = conOpt, stashCapacity = BenchBase.count)
+    val cfg = PSConfig(
+      brokerUrl,
+      conOpt = ConnOptions(maxInflight = 20, receiveMaximum = 10),
+      stashCapacity = count
+    )
     context.actorOf(Props(classOf[MqttPubSub], cfg))
   }
 

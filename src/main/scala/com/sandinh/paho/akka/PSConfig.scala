@@ -18,8 +18,8 @@ import scala.concurrent.duration._
   */
 case class PSConfig(
     brokerUrl:         String,
-    _clientId:         String        = null,
-    conOpt:            MqttConnectOptions = ConnOptions().get,
+    _clientId:         String         = null,
+    conOpt:            ConnOptions    = ConnOptions(),
     stashTimeToLive:   Duration       = 1.minute,
     stashCapacity:     Int            = 8000,
     reconnectDelayMin: FiniteDuration = 10.millis,

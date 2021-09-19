@@ -76,7 +76,7 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
         //If the client application calls connect after it had reconnected, an invalid state error will be thrown.
         //See https://github.com/eclipse/paho.mqtt.java/issues/9
         try {
-          client.connect(cfg.conOpt, null, conListener)
+          client.connect(cfg.conOpt.get, null, conListener)
         } catch {
           case NonFatal(e) =>
             logger.error(e)(s"can't connect to $cfg")
