@@ -45,9 +45,7 @@ lazy val `paho-akka` = projectMatrix
   )
 
 inThisBuild(Seq(
-  organization := "com.sandinh",
-  homepage := Some(url("https://github.com/giabao/paho-akka")),
-  licenses := Seq("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+  versionScheme := Some("semver-spec"),
   developers := List(
     Developer(
       "thanhbv",
@@ -68,5 +66,4 @@ inThisBuild(Seq(
       url("http://www.kloognome.com")
     ),
   ),
-  versionScheme := Some("semver-spec"),
 ))

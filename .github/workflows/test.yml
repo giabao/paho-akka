@@ -2,7 +2,7 @@ name: CI
 on: [push, pull_request]
 jobs:
   build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         java: [ '8', '11', '16' ]
@@ -16,6 +16,7 @@ jobs:
           java-version: ${{ matrix.java }}
           distribution: 'temurin'
       - uses: coursier/cache-action@v6
+      - run: sbt sdQA
       - run: |
           sbt "paho-akka_${{ matrix.sbtmatrix }}/testOnly com.sandinh.paho.akka.RemoteBenchSpec"
         shell: bash
