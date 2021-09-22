@@ -17,6 +17,9 @@ class LocalBenchSpec extends BenchBase("L") with BrokerHelper {
   }
 
   "MqttPubSub" must s"LocalBench" in benchTest(
-    "tcp://localhost:2883", 0, 5, 10000
+    "tcp://localhost:2883",
+    0,
+    5,
+    10000
   )
 }

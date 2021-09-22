@@ -14,13 +14,14 @@ import scala.util.{Random, Using}
 trait BrokerHelper {
   protected val logger: Logger
 
-  private val mosquittoVersion = sys.env.getOrElse("MOSQUITTO_VERSION", "2.0.12")
+  private val mosquittoVersion =
+    sys.env.getOrElse("MOSQUITTO_VERSION", "2.0.12")
   private val mosquittoImg = s"eclipse-mosquitto:$mosquittoVersion"
 
   protected def startBroker(
-    logPrefix: String = "",
-    port: Int = 1883,
-    wait: FiniteDuration = 3.seconds
+      logPrefix: String = "",
+      port: Int = 1883,
+      wait: FiniteDuration = 3.seconds
   ): Process = {
     val confFile = Files.createTempFile("paho", ".conf").toFile
     confFile.deleteOnExit()
@@ -34,17 +35,21 @@ trait BrokerHelper {
     )
 
     Docker.pull(mosquittoImg)
-    val ret = Docker.run(mosquittoImg,
+    val ret = Docker.run(
+      mosquittoImg,
       s"-a stdout -a stderr -p $port:1883",
       s"-v $confFile:/mosquitto/config/mosquitto.conf"
-    )(logger, logPrefix, _.endsWith(s"mosquitto version $mosquittoVersion running"))
+    )(
+      logger,
+      logPrefix,
+      _.endsWith(s"mosquitto version $mosquittoVersion running")
+    )
 
     logger.info(s"waiting $wait for mosquitto start")
     assert(Await.result(ret.donFuture, wait) == Done)
     ret
   }
 }
-
 
 object Docker {
   case class Process(name: String, donFuture: Future[Done]) {
@@ -53,7 +58,8 @@ object Docker {
   }
 
   protected val PATH = "/usr/local/sbin:/usr/sbin:/usr/local/bin:/usr/bin:/bin"
-  private def fullPath(bin: String) = PATH.split(':')
+  private def fullPath(bin: String) = PATH
+    .split(':')
     .map(p => s"$p/$bin")
     .find(f => new File(f).exists())
     .getOrElse(throw new RuntimeException(s"not found $bin in path $PATH"))
@@ -62,8 +68,10 @@ object Docker {
 
   def pull(img: String): Unit = assert(s"$docker pull $img".! == 0)
 
-  def run(img: String, args0: String*)
-    (logger: Logger, logPrefix: String, doneWhen: String => Boolean): Process = {
+  def run(
+      img: String,
+      args0: String*
+  )(logger: Logger, logPrefix: String, doneWhen: String => Boolean): Process = {
     def info(s: String): Unit = logger.info(s"$logPrefix | $s")
     def warn(s: String): Unit = logger.warn(s"$logPrefix | $s")
 

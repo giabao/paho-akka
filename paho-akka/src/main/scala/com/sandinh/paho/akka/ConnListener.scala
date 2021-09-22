@@ -16,7 +16,8 @@ private class ConnListener(owner: ActorRef) extends IMqttActionListener {
   }
 }
 
-private class PublishListener(owner: ActorRef, qos0: Boolean) extends IMqttActionListener {
+private class PublishListener(owner: ActorRef, qos0: Boolean)
+    extends IMqttActionListener {
   override def onSuccess(t: IMqttToken): Unit =
     owner ! PublishComplete(qos0)
   override def onFailure(t: IMqttToken, e: Throwable): Unit = {

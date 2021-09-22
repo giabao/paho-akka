@@ -12,9 +12,14 @@ import Docker.Process
 import org.slf4j.{Logger, LoggerFactory}
 
 //https://github.com/giabao/paho-akka/issues/2
-class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system)
-    with ImplicitSender with AnyWordSpecLike with Matchers
-    with BeforeAndAfterAll with ScalaFutures with BrokerHelper {
+class ResubscribeSpec(_system: ActorSystem)
+    extends TestKit(_system)
+    with ImplicitSender
+    with AnyWordSpecLike
+    with Matchers
+    with BeforeAndAfterAll
+    with ScalaFutures
+    with BrokerHelper {
   protected val logger: Logger = LoggerFactory.getLogger("ResubscribeSpec")
 
   def this() = this(ActorSystem("ResubscribeSpec"))
@@ -37,7 +42,8 @@ class ResubscribeSpec(_system: ActorSystem) extends TestKit(_system)
 
   "MqttPubSub" must {
     broker = startBroker("mosquitto")
-    val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://localhost:1883")), "pubsub")
+    val pubsub =
+      TestFSMRef(new MqttPubSub(PSConfig("tcp://localhost:1883")), "pubsub")
     val subscribe = Subscribe(topic, self, 2)
 
     "Can Subscribe before starting broker" in {

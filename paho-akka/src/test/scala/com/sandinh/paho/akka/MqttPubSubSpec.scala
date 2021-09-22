@@ -16,22 +16,32 @@ import scala.concurrent.{Future, Promise}
 
 import scala.util.Random
 
-class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system)
-    with ImplicitSender with AnyWordSpecLike with Matchers
-    with BeforeAndAfterAll with ScalaFutures {
+class MqttPubSubSpec(_system: ActorSystem)
+    extends TestKit(_system)
+    with ImplicitSender
+    with AnyWordSpecLike
+    with Matchers
+    with BeforeAndAfterAll
+    with ScalaFutures {
   import system.dispatcher
 
   def this() = this(ActorSystem("MqttPubSubSpec"))
 
   override def afterAll() = TestKit.shutdownActorSystem(system)
 
-  lazy val pubsub = TestFSMRef(new MqttPubSub(PSConfig("tcp://test.mqtt.ohze.net:1883")))
+  lazy val pubsub = TestFSMRef(
+    new MqttPubSub(PSConfig("tcp://test.mqtt.ohze.net:1883"))
+  )
 
   def poll(f: => Boolean): Future[Boolean] = {
     val p = Promise[Boolean]()
-    val task = system.scheduler.schedule(1.second, 1.second, new Runnable {
-      def run() = if (f) p success true
-    })
+    val task = system.scheduler.schedule(
+      1.second,
+      1.second,
+      new Runnable {
+        def run() = if (f) p success true
+      }
+    )
     p.future.andThen { case _ => task.cancel() }
   }
 
@@ -47,7 +57,9 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system)
       pubsub ! subscribe
       expectMsg(10.seconds, SubscribeAck(subscribe, None))
 
-      pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
+      pubsub.children.map(_.path.name) should contain(
+        URLEncoder.encode(topic, "utf-8")
+      )
 
       val payload = "12345".getBytes("utf-8")
       pubsub ! new Publish(topic, payload, 2)
@@ -63,13 +75,18 @@ class MqttPubSubSpec(_system: ActorSystem) extends TestKit(_system)
       val subscribe = Subscribe(topic, probe.ref, 2)
       pubsub ! subscribe
       probe.expectMsg(SubscribeAck(subscribe, None))
-      pubsub.children.map(_.path.name) should contain(URLEncoder.encode(topic, "utf-8"))
+      pubsub.children.map(_.path.name) should contain(
+        URLEncoder.encode(topic, "utf-8")
+      )
 
       probe.ref ! PoisonPill
-      akka.pattern.after(1.seconds, system.scheduler)(Future(pubsub.children))
-        .futureValue.map(_.path.name) should not contain URLEncoder.encode(topic, "utf-8")
+      akka.pattern
+        .after(1.seconds, system.scheduler)(Future(pubsub.children))
+        .futureValue
+        .map(_.path.name) should not contain URLEncoder.encode(topic, "utf-8")
     }
   }
 
-  override implicit def patienceConfig: PatienceConfig = PatienceConfig(Span(20, Seconds), Span(1, Second))
+  override implicit def patienceConfig: PatienceConfig =
+    PatienceConfig(Span(20, Seconds), Span(1, Second))
 }

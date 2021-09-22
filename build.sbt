@@ -5,22 +5,22 @@ lazy val akka26 = ConfigAxis("_2_6", "-akka2.6")
 lazy val akkaVersion = settingKey[String]("akkaVersion")
 
 lazy val depsSetting = libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor"   % akkaVersion.value        cross for3Use2_13,
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion.value cross for3Use2_13,
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test cross for3Use2_13,
-  "org.eclipse.paho"       % "org.eclipse.paho.client.mqttv3" % "1.2.5",
-  "org.slf4j"              % "slf4j-api"                      % "1.7.32",
-  "org.scalatest"          %% "scalatest"                     % "3.2.9"   % Test,
-  "ch.qos.logback"         % "logback-classic"                % "1.2.6"   % Test,
-  "org.scala-lang.modules" %% "scala-collection-compat"       % "2.5.0"   % Test,
+  "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5",
+  "org.slf4j" % "slf4j-api" % "1.7.32",
+  "org.scalatest" %% "scalatest" % "3.2.9" % Test,
+  "ch.qos.logback" % "logback-classic" % "1.2.6" % Test,
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.5.0" % Test,
 )
 
-lazy val scalacSetting = scalacOptions ++= Seq(
-  "-encoding", "UTF-8", "-deprecation", "-feature"
-) ++ (CrossVersion.scalaApiVersion(scalaVersion.value) match {
-  case Some((2, 11)) => Seq("-Ybackend:GenBCode", "-target:jvm-1.8")
-  case Some((2, 12)) => Seq("-target:jvm-1.8")
-  case _ => Nil
-})
+lazy val scalacSetting = scalacOptions ++=
+  Seq("-encoding", "UTF-8", "-deprecation", "-feature") ++
+    (CrossVersion.scalaApiVersion(scalaVersion.value) match {
+      case Some((2, 11)) => Seq("-Ybackend:GenBCode", "-target:jvm-1.8")
+      case Some((2, 12)) => Seq("-target:jvm-1.8")
+      case _             => Nil
+    })
 
 lazy val `paho-akka` = projectMatrix
   .customRow(
@@ -44,26 +44,28 @@ lazy val `paho-akka` = projectMatrix
     ),
   )
 
-inThisBuild(Seq(
-  versionScheme := Some("semver-spec"),
-  developers := List(
-    Developer(
-      "thanhbv",
-      "Bui Viet Thanh",
-      "thanhbv@sandinh.net",
-      url("https://sandinh.com")
+inThisBuild(
+  Seq(
+    versionScheme := Some("semver-spec"),
+    developers := List(
+      Developer(
+        "thanhbv",
+        "Bui Viet Thanh",
+        "thanhbv@sandinh.net",
+        url("https://sandinh.com")
+      ),
+      Developer(
+        "mramshaw",
+        "Martin Ramshaw",
+        "mramshaw@alumni.concordia.ca",
+        url("https://github.com/mramshaw")
+      ),
+      Developer(
+        "crawford42",
+        "Robert Crawford",
+        "crawford@kloognome.com",
+        url("http://www.kloognome.com")
+      ),
     ),
-    Developer(
-      "mramshaw",
-      "Martin Ramshaw",
-      "mramshaw@alumni.concordia.ca",
-      url("https://github.com/mramshaw")
-    ),
-    Developer(
-      "crawford42",
-      "Robert Crawford",
-      "crawford@kloognome.com",
-      url("http://www.kloognome.com")
-    ),
-  ),
-))
+  )
+)

@@ -3,7 +3,10 @@ package com.sandinh.paho.akka
 import java.net.{URLDecoder, URLEncoder}
 import akka.actor.{FSM, Props, Terminated}
 import org.eclipse.paho.client.mqttv3._
-import MqttException.{REASON_CODE_CLIENT_NOT_CONNECTED, REASON_CODE_MAX_INFLIGHT}
+import MqttException.{
+  REASON_CODE_CLIENT_NOT_CONNECTED,
+  REASON_CODE_MAX_INFLIGHT
+}
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -97,7 +100,9 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
       while (subStash.nonEmpty) self ! subStash.dequeue()
       //remove expired Publish messages
       if (cfg.stashTimeToLive.isFinite)
-        pubStash.dequeueAll(_._1 + cfg.stashTimeToLive.toNanos < System.nanoTime)
+        pubStash.dequeueAll(
+          _._1 + cfg.stashTimeToLive.toNanos < System.nanoTime
+        )
       while (pubStash.nonEmpty) self ! pubStash.dequeue()._2
       goto(ConnectedState)
 
@@ -123,8 +128,8 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
 
   when(ConnectedState) {
     case Event(p: Publish, _)
-      if inflight0 + inflight >= cfg.conOpt.maxInflight ||
-        p.qos > 0 && inflight >= cfg.conOpt.maxInflightQos12 =>
+        if inflight0 + inflight >= cfg.conOpt.maxInflight ||
+          p.qos > 0 && inflight >= cfg.conOpt.maxInflightQos12 =>
       pubStash += (System.nanoTime -> p)
       stay()
 
@@ -136,14 +141,16 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
         else inflight += 1
       } catch {
         //underlying client can be disconnected when this FSM is in state SConnected. See ResubscribeSpec
-        case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
+        case e: MqttException
+            if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
           self ! Disconnected //delayConnect & goto SDisconnected
           self ! p //stash p
         case e: MqttException if e.getReasonCode == REASON_CODE_MAX_INFLIGHT =>
           // This case should not be matched because we limit inflight message using inflight & inflight0
-          logger.error(s"can't publish to ${p.topic}. ${
-            MessageCatalog.getMessage(REASON_CODE_MAX_INFLIGHT)
-          }. $inflight0, $inflight, ${client.getInFlightMessageCount}")
+          logger.error(
+            s"can't publish to ${p.topic}. ${MessageCatalog
+              .getMessage(REASON_CODE_MAX_INFLIGHT)}. $inflight0, $inflight, ${client.getInFlightMessageCount}"
+          )
         case NonFatal(e) =>
           logger.error(s"can't publish to ${p.topic}", e)
       }
@@ -167,8 +174,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
       try {
         client.unsubscribe(urlDec(topicRef.path.name))
       } catch {
-        case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED => //do nothing
-        case NonFatal(e) => logger.error(s"can't unsubscribe from ${topicRef.path.name}", e)
+        case e: MqttException
+            if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED => //do nothing
+        case NonFatal(e) =>
+          logger.error(s"can't unsubscribe from ${topicRef.path.name}", e)
       }
       stay()
   }
@@ -221,7 +230,8 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
       try {
         client.subscribe(sub.topic, sub.qos, null, subsListener)
       } catch {
-        case e: MqttException if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
+        case e: MqttException
+            if e.getReasonCode == REASON_CODE_CLIENT_NOT_CONNECTED =>
           self ! Disconnected //delayConnect & goto SDisconnected
           self ! sub //stash Subscribe
         case NonFatal(e) =>
@@ -241,27 +251,30 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
 
   self ! Connect
 
-  onTermination {
-    case e =>
-      log.info("stop {}", e)
-      val wait = 29.seconds
-      Try {
-        Await.result(disconnectClient(wait), wait + 1.second)
-      }.recover {
-        case NonFatal(_) => client.disconnectForcibly(0, wait.toMillis)
-      }.map { _ =>
-        client.close(true)
-      }.recover {
-        case NonFatal(e) => log.error(e, "Can't close client")
-      }.get
+  onTermination { case e =>
+    log.info("stop {}", e)
+    val wait = 29.seconds
+    Try {
+      Await.result(disconnectClient(wait), wait + 1.second)
+    }.recover { case NonFatal(_) =>
+      client.disconnectForcibly(0, wait.toMillis)
+    }.map { _ =>
+      client.close(true)
+    }.recover { case NonFatal(e) =>
+      log.error(e, "Can't close client")
+    }.get
   }
 
   private def disconnectClient(wait: FiniteDuration): Future[Unit] = {
     val p = Promise[Unit]()
-    client.disconnect(wait.toMillis, null, new IMqttActionListener {
-      override def onSuccess(t: IMqttToken): Unit = p.success(())
-      override def onFailure(t: IMqttToken, e: Throwable): Unit = p.failure(e)
-    })
+    client.disconnect(
+      wait.toMillis,
+      null,
+      new IMqttActionListener {
+        override def onSuccess(t: IMqttToken): Unit = p.success(())
+        override def onFailure(t: IMqttToken, e: Throwable): Unit = p.failure(e)
+      }
+    )
     p.future
   }
 }
