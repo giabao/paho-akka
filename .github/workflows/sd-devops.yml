@@ -1,0 +1,70 @@
+name: sd-devops
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        java: [ '8', '11', '17' ]
+        sbtmatrix: [ '2_5', '2_52_11', '2_52_12', '2_6', '2_62_12', '2_63' ]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: coursier/cache-action@v6
+      - uses: actions/setup-java@v2
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+      - uses: coursier/cache-action@v6
+      - run: sbt sdQA
+      - run: sbt "paho-akka_${{ matrix.sbtmatrix }}/testOnly com.sandinh.paho.akka.RemoteBenchSpec"
+        env:
+          REMOTE_BROKER: "tcp://test.mqtt.ohze.net:1883"
+      # https://www.scala-sbt.org/1.x/docs/GitHub-Actions-with-sbt.html#Caching
+      - run: |
+          sbt "paho-akka_${{ matrix.sbtmatrix }}/test"
+          rm -rf "$HOME/.ivy2/local" || true
+          find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
+          find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
+          find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
+          find $HOME/.sbt                              -name "*.lock"               -delete || true
+        shell: bash
+
+  publish:
+    needs: build
+    if: |
+      success() &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/master' ||
+        startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '8'
+      - run: sbt ci-release
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          CI_RELEASE: publishSigned
+          CI_SNAPSHOT_RELEASE: publish
+
+  mattermost:
+    needs: [build, publish]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: coursier/cache-action@v6
+      - run: sbt sdMmNotify
+        env:
+          SD_MM_NEEDS: ${{ toJSON(needs) }}
+          MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
