@@ -1,6 +1,6 @@
 paho-akka
 =========
-[![CI](https://github.com/giabao/paho-akka/actions/workflows/sd-devops.yml/badge.svg)](https://github.com/giabao/paho-akka/actions/workflows/sd-devops.yml)
+[![CI](https://github.com/giabao/paho-akka/actions/workflows/sbt-devops.yml/badge.svg)](https://github.com/giabao/paho-akka/actions/workflows/sbt-devops.yml)
 [![Known Vulnerabilities](https://snyk.io/test/github/mramshaw/paho-akka/badge.svg?style=plastic&targetFile=build.sbt)](https://snyk.io/test/github/mramshaw/paho-akka?style=plastic&targetFile=build.sbt)
 
 ## What?
