@@ -1,13 +1,6 @@
-import CrossVersion.for3Use2_13
-
-lazy val akka25 = ConfigAxis("_2_5", "-akka2.5")
-lazy val akka26 = ConfigAxis("_2_6", "-akka2.6")
-lazy val akkaVersion = settingKey[String]("akkaVersion")
+import AkkaAxis._
 
 lazy val depsSetting = libraryDependencies ++= Seq(
-  // TODO remove `for3Use2_13` when this issue is fixed: https://github.com/akka/akka/issues/30243
-  "com.typesafe.akka" %% "akka-actor" % akkaVersion.value cross for3Use2_13,
-  "com.typesafe.akka" %% "akka-testkit" % akkaVersion.value % Test cross for3Use2_13,
   "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5",
   "org.slf4j" % "slf4j-api" % "1.7.32",
   "org.scalatest" %% "scalatest" % "3.2.9" % Test,
@@ -20,16 +13,16 @@ lazy val `paho-akka` = projectMatrix
     scalaVersions = Seq(scala211, scala212, scala213),
     axisValues = Seq(akka25, VirtualAxis.jvm),
     Seq(
-      akkaVersion := "2.5.32",
       moduleName := name.value + "_2_5",
+      akka25.depsSetting,
     ),
   )
   .customRow(
     scalaVersions = Seq(scala212, scala213, scala3),
     axisValues = Seq(akka26, VirtualAxis.jvm),
     Seq(
-      akkaVersion := "2.6.16",
       moduleName := name.value,
+      akka26.depsSetting,
     ),
   )
   .settings(depsSetting)
