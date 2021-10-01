@@ -4,12 +4,16 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-20.04
+    outputs:
+      commitMsg: ${{ steps.commitMsg.outputs.msg }}
     strategy:
       matrix:
         java: [ '8', '11', '17' ]
         sbtmatrix: [ '2_5', '2_52_11', '2_52_12', '2_6', '2_62_12', '2_63' ]
     steps:
       - uses: actions/checkout@v2
+      - id: commitMsg
+        run: echo "::set-output name=msg::$(git show -s --format=%s $GITHUB_SHA)"
       - uses: actions/setup-java@v2
         with:
           java-version: ${{ matrix.java }}
@@ -38,6 +42,8 @@ jobs:
         github.ref == 'refs/heads/master' ||
         startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-20.04
+    outputs:
+      info: ${{ steps.info.outputs.info }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -54,17 +60,15 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           CI_RELEASE: publishSigned
           CI_SNAPSHOT_RELEASE: publish
+      - id: info
+        run: echo "::set-output name=info::$(cat "$GITHUB_WORKSPACE/target/publish.info")"
 
   notify:
     needs: [build, publish]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - uses: coursier/cache-action@v6
-      - run: sbt devopsNotify
+      - uses: docker://ohze/devops-notify
         env:
           # You can use `DEVOPS_` | `SLACK_` prefix for `MATTERMOST_*` envs below
           # ex SLACK_WEBHOOK_URL instead of MATTERMOST_WEBHOOK_URL
