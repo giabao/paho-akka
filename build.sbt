@@ -1,9 +1,10 @@
 lazy val depsSetting = libraryDependencies ++= Seq(
   "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5",
   "org.slf4j" % "slf4j-api" % "1.7.32",
+  scalaColCompat % Provided, // to use @nowarn & silencer
+  scalaColCompat % Test,
   "org.scalatest" %% "scalatest" % "3.2.9" % Test,
   "ch.qos.logback" % "logback-classic" % "1.2.6" % Test,
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.5.0" % Test,
 ) ++ akka("actor", "testkit" -> Test).value
 
 lazy val `paho-akka` = projectMatrix

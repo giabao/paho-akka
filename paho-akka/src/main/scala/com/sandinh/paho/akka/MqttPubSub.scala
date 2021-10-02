@@ -14,6 +14,7 @@ import MqttPubSub._
 import org.eclipse.paho.client.mqttv3.internal.MessageCatalog
 import org.slf4j.LoggerFactory
 
+import scala.annotation.nowarn
 import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 import scala.util.Try
@@ -212,7 +213,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
       stay()
 
     case Event(SubscriberTerminated(ref), _) =>
-      subscribed.retain(_.ref != ref)
+      subscribed.retain(_.ref != ref): @nowarn(
+        // we still support scala 2.11 & 2.12
+        "msg=method retain in trait SetOps is deprecated \\(since 2\\.13\\.0\\)"
+      )
       stay()
 
     case Event(Disconnected, _) =>
@@ -241,6 +245,10 @@ class MqttPubSub(cfg: PSConfig) extends FSM[PSState, Unit] {
     subscribing += sub
   }
 
+  @nowarn(
+    // we still support akka 2.5
+    "msg=method setTimer in trait FSM is deprecated \\(since 2\\.6\\.0\\)"
+  )
   private def delayConnect(): Unit = {
     val delay = cfg.connectDelay(connectCount)
     logger.info(s"delay $delay before reconnect")
