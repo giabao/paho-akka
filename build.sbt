@@ -1,11 +1,15 @@
+def scalatest(modules: String*) = modules.map { m =>
+  "org.scalatest" %% s"scalatest$m" % "3.2.10" % Test
+}
+
 lazy val depsSetting = libraryDependencies ++= Seq(
   "org.eclipse.paho" % "org.eclipse.paho.client.mqttv3" % "1.2.5",
   "org.slf4j" % "slf4j-api" % "1.7.32",
   scalaColCompat % Provided, // to use @nowarn & silencer
   scalaColCompat % Test,
-  "org.scalatest" %% "scalatest" % "3.2.9" % Test,
   "ch.qos.logback" % "logback-classic" % "1.2.6" % Test,
-) ++ akka("actor", "testkit" -> Test).value
+) ++ akka("actor", "testkit" -> Test).value ++
+  scalatest("-flatspec", "-shouldmatchers", "-wordspec")
 
 lazy val `paho-akka` = projectMatrix
   .akkaAxis(akka25, Seq(scala211, scala212, scala213))
